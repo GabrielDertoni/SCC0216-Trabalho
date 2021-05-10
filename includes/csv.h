@@ -58,9 +58,6 @@
         (Value)val \
     )
 
-#define csv_format(ty, format, ...) \
-    csv_new_with_format(sizeof(ty), format, __VA_ARGS__);
-
 // Todos os tipos primitivos suportados. Todos os tipos que uma célula do CSV
 // pode assumir.
 typedef enum {
@@ -81,9 +78,10 @@ typedef union {
 } Value;
 
 typedef enum {
-    PARSER_OK,
-    PARSER_FAIL,
-} ParserResult;
+    CSV_ERR_FILE,
+    CSV_ERR_PARSE,
+    CSV_OK,
+} CSVResult;
 
 typedef struct {
     PrimitiveType type;
@@ -116,23 +114,6 @@ typedef struct {
 CSV csv_new(size_t elsize, size_t n_columns);
 
 /**
- * Cria o TAD CSV de que usa um determinado formato de colunas que se assemlha
- * ao formato usado nas funções `printf` ou `scanf`. Esse tipo precisa ser
- * liberado através da função `csv_drop`.
- *
- * @param elsize - o tamanho completo do struct a ser espelhado obtido por
- *                 `sizeof`.
- * @param format - o formato das colunas do CSV:
- *                  > %s       - para tipo string ou `char *`
- *                  > %d ou %i - para tipo int.
- *                  > %lf      - para tipo double.
- * @param ...args - argumentos com os offsets dos campos a serem espelhados
- *                  obtido por `offsetof`.
- * @return o TAD csv sem nenhuma linha lida.
- */
-CSV csv_new_with_format(size_t elsize, const char *format, ...);
-
-/**
  * Libera a memória alocada pelo csv.
  *
  * @param csv - o csv a ser liberado.
@@ -155,10 +136,10 @@ void csv_set_column(CSV *csv, size_t idx, Column column);
  * @param fname - o nome do arquivo. [ref]
  * @param sep - o separador de campo utilizado pelo arquivo. [ref]
  * @return um tipo que diz se a leitura foi bem ou mal sucedida. Caso o
- *         resultado seja PARSER_FAIL, `csv->error_msg` terá uma mensagem de
+ *         resultado seja CSV_ERR_PARSE, `csv->error_msg` terá uma mensagem de
  *         erro (dinamicamente alocada).
  */
-ParserResult csv_parse_file(CSV *csv, const char *fname, const char *sep);
+CSVResult csv_parse_file(CSV *csv, const char *fname, const char *sep);
 
 /* Acesso a informações contidas em CSV. */
 

@@ -8,10 +8,10 @@
 
 CSV configure_vehicle_csv() {
     CSV csv = csv_new(sizeof(Vehicle), 6);
-    csv_set_column(&csv, 0, csv_column_default(char  , Vehicle, prefixo          , "\0@@@@"));
-    csv_set_column(&csv, 1, csv_column_default(char  , Vehicle, data             , "\0@@@@@@@@@"));
-    csv_set_column(&csv, 2, csv_column_default(i32   , Vehicle, quantidadeLugares, -1));
-    csv_set_column(&csv, 3, csv_column_default(i32   , Vehicle, codLinha         , -1));
+    csv_set_column(&csv, 0, csv_column_default(char, Vehicle, prefixo          , "\0@@@@"));
+    csv_set_column(&csv, 1, csv_column_default(char, Vehicle, data             , "\0@@@@@@@@@"));
+    csv_set_column(&csv, 2, csv_column_default(i32 , Vehicle, quantidadeLugares, -1));
+    csv_set_column(&csv, 3, csv_column_default(i32 , Vehicle, codLinha         , -1));
     csv_set_column(&csv, 4, csv_column(string, Vehicle, modelo));
     csv_set_column(&csv, 5, csv_column(string, Vehicle, categoria));
     return csv;
@@ -29,9 +29,9 @@ CSV configure_bus_line_csv() {
 int main(int argc, char *argv[]) {
     CSV vehicles_csv = configure_vehicle_csv();
 
-    ParserResult res = csv_parse_file(&vehicles_csv, "data/veiculos.csv", ",");
+    CSVResult res = csv_parse_file(&vehicles_csv, "data/veiculos.csv", ",");
 
-    if (res == PARSER_FAIL) {
+    if (res == CSV_ERR_PARSE || res == CSV_ERR_FILE) {
         fprintf(stderr, "Error: %s.\n", vehicles_csv.error_msg);
         csv_drop(vehicles_csv);
         return 1;
