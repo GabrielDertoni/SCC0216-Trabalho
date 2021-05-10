@@ -58,6 +58,8 @@
         (Value)val \
     )
 
+#define CSV_IS_ERROR(res) (res == CSV_ERR_PARSE || res == CSV_ERR_FILE)
+
 // Todos os tipos primitivos suportados. Todos os tipos que uma célula do CSV
 // pode assumir.
 typedef enum {

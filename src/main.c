@@ -29,10 +29,14 @@ CSV configure_bus_line_csv() {
 int main(int argc, char *argv[]) {
     CSV vehicles_csv = configure_vehicle_csv();
 
-    CSVResult res = csv_parse_file(&vehicles_csv, "data/veiculos.csv", ",");
+    CSVResult res = csv_parse_file(&vehicles_csv, "data/veiculo.csv", ",");
 
-    if (res == CSV_ERR_PARSE || res == CSV_ERR_FILE) {
-        fprintf(stderr, "Error: %s.\n", vehicles_csv.error_msg);
+    if (CSV_IS_ERROR(res)) {
+        if (res == CSV_ERR_PARSE)
+            fprintf(stderr, "ParseError: %s.\n", vehicles_csv.error_msg);
+        else
+            fprintf(stderr, "FileError: %s.\n", vehicles_csv.error_msg);
+
         csv_drop(vehicles_csv);
         return 1;
     }

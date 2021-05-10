@@ -122,11 +122,14 @@ static CSVResult csv_parse_char(
 
     if (i < col.size) {
         error(csv,
-            "expected field \"%s\" in row %d to be %ld chars long but was only %d chars long.",
+            "expected field \"%s\" in row %d to be %ld chars long "
+            "but was only %d chars long with value \"%.*s\"",
             col.name,
             csv->n_rows + 1,
             col.size,
-            i
+            i,
+            i,
+            input
         );
         return CSV_ERR_PARSE;
     }
@@ -199,6 +202,7 @@ static CSVResult csv_parse_row(CSV *csv, char *input, const char *sep) {
     void *row_values = csv->values + csv->n_rows * csv->elsize;
 
     int i = 0;
+    CSVResult status;
     do {
         if (i >= csv->n_columns) {
             csv->error_msg = strdup("got more columns than expected");
@@ -210,20 +214,21 @@ static CSVResult csv_parse_row(CSV *csv, char *input, const char *sep) {
 
         void *field = row_values + col.offset;
 
-        if (csv_parse_value(csv, col, (Value *)field, parse_field) == CSV_ERR_PARSE) {
-            return CSV_ERR_PARSE;
-        }
-    } while (parse_ptr != NULL);
+        status = csv_parse_value(csv, col, (Value *)field, parse_field);
+    } while (parse_ptr != NULL && status == CSV_OK);
 
-    if (i < csv->n_columns) {
-        csv->error_msg = strdup("got fewer columns than expected");
+    if (i < csv->n_columns && status == CSV_OK) {
+        error(csv, "got fewer columns than expected on row %d", csv->n_rows + 1);
+        status = CSV_ERR_PARSE;
+    }
 
+    if (status != CSV_OK) {
         for (int j = 0; j < i; j++) {
             Column col = csv->columns[j];
             free_value(col.type, (Value *)(row_values + col.offset));
         }
 
-        return CSV_ERR_PARSE;
+        return status;
     }
 
     csv->n_rows++;
