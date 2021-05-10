@@ -76,6 +76,8 @@ CSV csv_new(size_t elsize, size_t n_columns) {
         .elsize    = elsize,
         .values    = NULL,
         .error_msg = NULL,
+
+        .allow_partial_field_as_null = false,
     };
 }
 
@@ -98,9 +100,18 @@ void csv_drop(CSV csv) {
 
 void csv_set_column(CSV *csv, size_t col_idx, Column column) {
     if (col_idx >= csv->n_columns) {
-        fprintf(stderr, "Error: column index %zu is out of bounds for CSV.", col_idx);
+        fprintf(stderr, "Error: column index %zu is out of bounds for CSV.\n", col_idx);
+        exit(1);
     }
     csv->columns[col_idx] = column;
+}
+
+void csv_set_flag(CSV *csv, CSVFlag flag, bool val) {
+    switch (flag) {
+        case CSV_FLAG_PARTIAL_FIELD_AS_NULL:
+            csv->allow_partial_field_as_null = val;
+            break;
+    }
 }
 
 static CSVResult csv_parse_char(
@@ -115,15 +126,20 @@ static CSVResult csv_parse_char(
         field[i] = input[i];
     }
 
-    if (i == 0 && !col.is_required) {
+    bool is_empty = i == 0;
+    bool is_partial = !is_empty && i < col.size;
+
+    if (!col.is_required && (is_empty || (is_partial && csv->allow_partial_field_as_null))) {
         memcpy(field, col.default_val.str, col.size);
         return CSV_OK;
     }
 
-    if (i < col.size) {
+    if (is_partial || is_empty) {
         error(csv,
-            "expected field \"%s\" in row %d to be %ld chars long "
-            "but was only %d chars long with value \"%.*s\"",
+            "%s field not allowed in field \"%s\" on row %d. "
+            "Expected it to be %ld chars long but was only %d chars long "
+            "with value \"%.*s\"",
+            is_partial ? "partial" : "empty",
             col.name,
             csv->n_rows + 1,
             col.size,
@@ -164,6 +180,7 @@ static CSVResult csv_parse_value(CSV *csv, Column col, Value *field, const char 
         }
     }
 
+    // TODO: Add partial field handling.
     if (is_field_null) {
         if (col.is_required) {
             error(csv,

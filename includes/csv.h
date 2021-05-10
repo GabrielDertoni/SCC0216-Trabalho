@@ -58,6 +58,8 @@
         (Value)val \
     )
 
+#define csv_use(csv, flag) csv_set_flag(csv, CSV_FLAG_##flag, 1)
+
 #define CSV_IS_ERROR(res) (res == CSV_ERR_PARSE || res == CSV_ERR_FILE)
 
 // Todos os tipos primitivos suportados. Todos os tipos que uma célula do CSV
@@ -85,6 +87,10 @@ typedef enum {
     CSV_OK,
 } CSVResult;
 
+typedef enum {
+    CSV_FLAG_PARTIAL_FIELD_AS_NULL,
+} CSVFlag;
+
 typedef struct {
     PrimitiveType type;
     size_t size;        // Tamanho do array de `type`. Utilizado apenas para `char[n]`.
@@ -102,6 +108,7 @@ typedef struct {
     size_t elsize;
     void *values;
     char *error_msg;
+    bool allow_partial_field_as_null;
 } CSV;
 
 /**
@@ -130,6 +137,15 @@ void csv_drop(CSV csv);
  * @param column - as configurações da coluna gerada através do `csv_column_new`.
  */
 void csv_set_column(CSV *csv, size_t idx, Column column);
+
+/**
+ * Configura uma flag do csv.
+ *
+ * @param csv - o csv no qual a flag será alterada.
+ * @param flag - a flag a ser alterada.
+ * @param val - o valor da flag.
+ */
+void csv_set_flag(CSV *csv, CSVFlag flag, bool val);
 
 /**
  * Carrega um arquivo csv a partir de seu nome.

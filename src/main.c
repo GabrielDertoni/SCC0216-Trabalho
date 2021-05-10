@@ -14,6 +14,8 @@ CSV configure_vehicle_csv() {
     csv_set_column(&csv, 3, csv_column_default(i32 , Vehicle, codLinha         , -1));
     csv_set_column(&csv, 4, csv_column(string, Vehicle, modelo));
     csv_set_column(&csv, 5, csv_column(string, Vehicle, categoria));
+
+    csv_use(&csv, PARTIAL_FIELD_AS_NULL);
     return csv;
 }
 
