@@ -13,7 +13,7 @@ HDR := includes
 
 # Where to find .c test files (any .h exclusive for tests should also be in this
 # directory)
-TEST := test
+TEST := tests
 
 # Compilation flags
 CFLAGS := -Wall -Werror
@@ -38,6 +38,8 @@ SRCS := $(wildcard $(SRC)/*.c)
 
 # All .c test files
 TESTS := $(wildcard $(TEST)/*.c)
+
+TEST_INCLUDE := src/utils.c
 
 # All .h files
 # NOTE: currently not used by any rules
@@ -101,6 +103,12 @@ test: $(patsubst $(TEST)/%.c, test-run-one-%, $(TESTS))
 	@echo '\t'$(UNEDERLINE)'Test results:'$(ENDCOLOR)
 	@$(MAKE) -s test-teardown
 
+test_%: $(TEST_DIR)/test_%
+	@echo $(UNEDERLINE)'Test stdout/stderr:'$(ENDCOLOR)
+	@$<
+
+build_tests: $(patsubst $(TEST)/%.c, $(TEST_DIR)/%, $(TESTS))
+
 # Prevent tests from beeing treated as intermidiate files
 .PRECIOUS: $(TEST_DIR)/%
 
@@ -120,9 +128,10 @@ $(OBJ_DIR)/%.o: $(SRC)/%.c | $(OBJ_DIR)
 	@$(call PRINT_COMPILE, $<, $@)
 	@$(CC) $(CFLAGS) -c $< -o $@ -I $(HDR)
 
-$(TEST_DIR)/%: $(TEST)/%.c | $(TEST_DIR)
+.SECONDEXPANSION:
+$(TEST_DIR)/test_%: $$(TEST)/test_%.c $$(wildcard $$(SRC)/%.c) | $(TEST_DIR)
 	@$(call PRINT_COMPILE, $<, $@)
-	@$(CC) $(CFLAGS) $< -o $@ -I $(TEST)
+	@$(CC) $(CFLAGS) $^ $(TEST_INCLUDE) -o $@ -I $(TEST) -I $(HDR)
 
 # Removes all make generated directories and files
 clean:
