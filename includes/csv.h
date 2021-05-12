@@ -25,61 +25,27 @@
 
 #define member_sizeof(ty, member) sizeof(((ty *)NULL)->member)
 
-#define _EXPAND_TYPE_char           TYPE_CHAR
-#define _EXPAND_TYPE_i32            TYPE_I32
-#define _EXPAND_TYPE_int            TYPE_I32
-#define _EXPAND_TYPE_double         TYPE_F64
-#define _EXPAND_TYPE_f64            TYPE_F64
-#define _EXPAND_TYPE_string         TYPE_STR
-#define _EXPAND_TYPE_any            TYPE_ANY
-#define _EXPAND_TYPE_void           TYPE_NONE
-
-#define _EXPAND_TYPE(ty) _EXPAND_TYPE_##ty
-
 // Macros que ajudam na legibilidade das funções que espelham um struct.
 
 #define csv_model(strct, n)     csv_new(sizeof(strct), n);
 #define csv_get_values(csv, ty) ((ty *)csv_get_raw_values(csv))
 
-#define csv_column(ty, strct, member) \
-    csv_column_new( \
-        _EXPAND_TYPE(ty), \
-        member_sizeof(strct, member) / csv_sizeof_type(_EXPAND_TYPE(ty)), \
-        offsetof(strct, member), \
-        NULL \
-    )
+#define csv_dynamic_field(parse) (ParseFunc *)parse, (DropFunc *)heap_drop
+#define csv_static_field(parse) (ParseFunc *)parse, (DropFunc *)NULL
 
-#define csv_column_default(ty, strct, member, val) \
-    csv_column_new_with_default( \
-        _EXPAND_TYPE(ty), \
-        member_sizeof(strct, member) / csv_sizeof_type(_EXPAND_TYPE(ty)), \
+#define _csv_column(strct, member, parse, drop) \
+    csv_column_new( \
+        member_sizeof(strct, member), \
         offsetof(strct, member), \
         NULL, \
-        (Value)val \
+        parse, \
+        drop \
     )
 
-#define csv_use(csv, flag) csv_set_flag(csv, CSV_FLAG_##flag, 1)
+#define csv_column(strct, member, args...) \
+    _csv_column(strct, member, args)
 
 #define CSV_IS_ERROR(res) (res == CSV_ERR_PARSE || res == CSV_ERR_FILE)
-
-// Todos os tipos primitivos suportados. Todos os tipos que uma célula do CSV
-// pode assumir.
-typedef enum {
-    TYPE_I32,
-    TYPE_F64,
-    TYPE_CHAR,
-    TYPE_STR,
-    TYPE_ANY,
-    TYPE_NONE,
-} PrimitiveType;
-
-typedef union {
-    int32_t i32;
-    double  f64;
-    char    chr;
-    char *  str;
-    void *  any;
-} Value;
 
 typedef enum {
     CSV_ERR_FILE,
@@ -87,29 +53,31 @@ typedef enum {
     CSV_OK,
 } CSVResult;
 
-typedef enum {
-    CSV_FLAG_PARTIAL_FIELD_AS_NULL,
-} CSVFlag;
-
-typedef struct {
-    PrimitiveType type;
-    size_t size;        // Tamanho do array de `type`. Utilizado apenas para `char[n]`.
-    size_t offset;
-    char *name;
-    bool is_required;
-    Value default_val;
-} Column; 
+typedef struct Column Column;
 
 typedef struct {
     Column *columns;
     size_t n_columns;
+    size_t curr_line;
+    size_t curr_field;
     size_t n_rows;
     size_t capacity;
     size_t elsize;
     void *values;
+    char *fname;
     char *error_msg;
-    bool allow_partial_field_as_null;
 } CSV;
+
+typedef CSVResult (ParseFunc)(CSV *, const char *, void *);
+typedef void (DropFunc)(void *);
+
+struct Column {
+    size_t size;
+    size_t offset;
+    char *name;
+    ParseFunc *parse;
+    DropFunc *drop;
+}; 
 
 /**
  * Cria o TAD CSV. Esse tipo precisa ser liberado através da função
@@ -129,6 +97,12 @@ CSV csv_new(size_t elsize, size_t n_columns);
  */
 void csv_drop(CSV csv);
 
+void csv_error_curr(CSV *csv, const char *format, ...);
+
+char *csv_get_fname(CSV *csv);
+size_t csv_get_curr_field(CSV *csv);
+size_t csv_get_curr_line(CSV *csv);
+
 /**
  * Registra uma nova coluna para o csv.
  *
@@ -139,20 +113,11 @@ void csv_drop(CSV csv);
 void csv_set_column(CSV *csv, size_t idx, Column column);
 
 /**
- * Configura uma flag do csv.
- *
- * @param csv - o csv no qual a flag será alterada.
- * @param flag - a flag a ser alterada.
- * @param val - o valor da flag.
- */
-void csv_set_flag(CSV *csv, CSVFlag flag, bool val);
-
-/**
  * Carrega um arquivo csv a partir de seu nome.
  *
  * @param csv - o csv sobre o qual carregar os dados. [mut ref]
  * @param fname - o nome do arquivo. [ref]
- * @param sep - o separador de campo utilizado pelo arquivo. [ref]
+ * @param sep - cada char em `sep` é considerado um separador. [ref]
  * @return um tipo que diz se a leitura foi bem ou mal sucedida. Caso o
  *         resultado seja CSV_ERR_PARSE, `csv->error_msg` terá uma mensagem de
  *         erro (dinamicamente alocada).
@@ -195,34 +160,12 @@ int csv_get_field_index(const CSV *csv, const char *field_name);
  *
  * @param type - o tipo primitivo da coluna.
  * @param offset - o offset desde o começo do struct espelhado.
- * @param size - o número de tipos `type` que devem estar presentes. Só
- *               utilizado para tipos char.
  * @param name - o nome do campo. Providenciar NULL faz com que o nome da coluna
  *               seja lido do cabeçalho do CSV. [ref]
  */
-Column csv_column_new(PrimitiveType type, size_t size, size_t offset, const char *name);
-
-/**
- * Cria uma nova coluna com algum valor padrão. Para criar a coluna, o parâmetro
- * `name` é duplicado.
- *
- * @param type - o tipo primitivo da coluna.
- * @param offset - o offset desde o começo do struct espelhado.
- * @param name - o nome do campo. Providenciar NULL faz com que o nome da coluna
- *               seja lido do cabeçalho do CSV. [ref]
- * @param default_val - o valor padrão da coluna.
- */
-Column csv_column_new_with_default(PrimitiveType type, size_t size, size_t offset, const char *name, Value default_val);
+Column csv_column_new(size_t size, size_t offset, const char *name, ParseFunc *parse, DropFunc *drop);
 
 /* Outros */
-
-/**
- * Converte um tipo primitivo em uma string que o representa.
- *
- * @param type - o tipo a ser convertido em string.
- * @return a string que representa o tipo. [ref]
- */
-char *type_to_string(PrimitiveType type);
 
 /**
  * Imprime o header do CSV gerado a partir das colunas registradas e seus tipos.
@@ -231,6 +174,14 @@ char *type_to_string(PrimitiveType type);
  */
 void csv_print_header(CSV *csv);
 
-uint8_t csv_sizeof_type(PrimitiveType type);
+// CSVResult csv_parse_string(CSV *csv, const char *input, Value *field);
+// CSVResult csv_parse_i32(CSV *csv, const char *input, Value *field);
+
+void id_drop(void *ptr);
+void heap_drop(void *ptr);
+
+#define CSV_STRING (ParseFunc *)csv_parse_string, (DropFunc *)heap_drop
+#define CSV_I32 (ParseFunc *)csv_parse_i32, (DropFunc *)id_drop
 
 #endif
+

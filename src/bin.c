@@ -74,8 +74,8 @@ bool write_vehicles_header(uint32_t nroRegistros, FILE *fp) {
 
 bool write_vehicle(Vehicle vehicle, FILE *fp) {
     bool removido = false;
-    uint32_t tamanhoModelo = strlen(vehicle.modelo);
-    uint32_t tamanhoCategoria = strlen(vehicle.categoria);
+    uint32_t tamanhoModelo = vehicle.modelo ? strlen(vehicle.modelo) : 0;
+    uint32_t tamanhoCategoria = vehicle.categoria ? strlen(vehicle.categoria) : 0;
     uint32_t tamanhoRegistro = 0;
     tamanhoRegistro += sizeof(vehicle.prefixo);
     tamanhoRegistro += sizeof(vehicle.data);
@@ -133,8 +133,8 @@ bool write_bus_lines_header(uint32_t nroRegistros, FILE *fp) {
 
 bool write_bus_line(BusLine line, FILE *fp) {
     bool removido = false;
-    uint32_t tamanhoNome = strlen(line.nomeLinha);
-    uint32_t tamanhoCor  = strlen(line.corLinha);
+    uint32_t tamanhoNome = line.nomeLinha ? strlen(line.nomeLinha) : 0;
+    uint32_t tamanhoCor  = line.corLinha ? strlen(line.corLinha) : 0;
     uint32_t tamanhoRegistro = 0;
     tamanhoRegistro += sizeof(line.codLinha);
     tamanhoRegistro += sizeof(line.aceitaCartao);
