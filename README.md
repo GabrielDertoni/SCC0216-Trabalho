@@ -33,9 +33,6 @@ Para somente compilar os testes mas não rodar nenhum, use `make build_tests`.
 
 ## TODO
 - Renomear `Column` para `CSVColumn`
-- Renomear `PrimitiveType` para `CSVPrimType`
-- Renomear `TYPE_...` para `CSV_TYPE_...`
-- Remover `TYPE_ANY`
 - Status deve ser uma string de 1 byte. Valores devem se `'0'` ou `'1'`. Ou
     seja, não é para ser um byte com o valor 1, mas sim o char `'1'`.
 - Considerar casos que começam com `'*'` como registros removidos.
