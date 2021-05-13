@@ -91,7 +91,8 @@ $(DEBUG_BIN): $(OBJS) | $(DEBUG_DIR)
 	@$(CC) -g $^ -o $@
 
 test-setup:
-	@echo -n > /tmp/make-test
+	@rm -f /tmp/make-test
+	@touch /tmp/make-test
 
 test-teardown:
 	@printf '\t%b tests ok!\n'     $$(cat /tmp/make-test | grep SUCCESS | wc -l)
