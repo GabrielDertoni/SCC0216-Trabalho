@@ -39,6 +39,7 @@ SRCS := $(wildcard $(SRC)/*.c)
 # All .c test files
 TESTS := $(wildcard $(TEST)/*.c)
 
+TEST_LOG := $(TEST_DIR)/make_test.log
 TEST_INCLUDE := src/utils.c
 
 # All .h files
@@ -50,6 +51,7 @@ OBJS := $(patsubst $(SRC)/%.c, $(OBJ_DIR)/%.o, $(SRCS))
 
 # All executable tests
 TEST_BINS := $(patsubst $(TEST)/%.c, $(TEST_DIR)/%, $(TESTS))
+TEST_TMP := $(TEST_DIR)/tmp-make-test
 
 # Some colors!
 ENDCOLOR := "\033[0m"
@@ -67,14 +69,15 @@ PRINT_TEST = printf '\t%b\t%b\n' $(TESTCOLOR)TESTING$(ENDCOLOR) $(1)
 PRINT_ERROR = printf '\t%b\t%b\n' $(ERRORCOLOR)ERROR$(ENDCOLOR) $(1)
 PRINT_SUCCESS = printf '\t%b\t%b\n' $(SUCCESSCOLOR)SUCCESS$(ENDCOLOR) $(1)
 
-EVAL_TEST = ./$(1) > /dev/null 2>&1; \
+EVAL_TEST = echo "==== $(1) output ====" >> $(TEST_LOG); \
+			./$(1) >> $(TEST_LOG) 2>&1; \
 			if [ $$? -eq 0 ]; \
 				then \
 					$(call PRINT_SUCCESS, "Test $(1)"); \
-					echo "SUCCESS $(1)" >> /tmp/make-test; \
+					echo "[SUCCESS $(1)]" >> $(TEST_TMP); \
 				else \
 					$(call PRINT_ERROR, "Test $(1)"); \
-					echo "FAIL $(1)" >> /tmp/make-test; \
+					echo "[FAIL $(1)]" >> $(TEST_TMP); \
 			fi
 
 all: $(BIN)
@@ -91,14 +94,14 @@ $(DEBUG_BIN): $(OBJS) | $(DEBUG_DIR)
 	@$(CC) -g $^ -o $@
 
 test-setup:
-	@rm -f /tmp/make-test
-	@touch /tmp/make-test
+	@rm -f $(TEST_TMP) $(TEST_LOG)
+	@touch $(TEST_TMP) $(TEST_LOG)
 
 test-teardown:
-	@printf '\t%b tests ok!\n'     $$(cat /tmp/make-test | grep SUCCESS | wc -l)
-	@printf '\t%b tests failed!\n' $$(cat /tmp/make-test | grep FAIL    | wc -l)
-	@printf '\t%b tests total.\n'  $$(cat /tmp/make-test                | wc -l)
-	# @rm /tmp/make-test
+	@printf '\t%b tests ok!\n'     $$(cat $(TEST_TMP) | grep SUCCESS | wc -l)
+	@printf '\t%b tests failed!\n' $$(cat $(TEST_TMP) | grep FAIL    | wc -l)
+	@printf '\t%b tests total.\n'  $$(cat $(TEST_TMP)                | wc -l)
+	# @rm -f $(TEST_TMP)
 
 test: $(patsubst $(TEST)/%.c, test-run-one-%, $(TESTS))
 	@echo '\t'$(UNEDERLINE)'Test results:'$(ENDCOLOR)
