@@ -181,7 +181,7 @@ int main() {
 
     CSV csv = configure_vehicle_csv();
 
-    CSVResult res = csv_parse_file(&csv, "data/veiculo_err.csv", ",");
+    CSVResult res = csv_parse_file(&csv, "data/veiculo.csv", ",");
 
     if (res == CSV_ERR_FILE || res == CSV_ERR_PARSE) {
         fprintf(
