@@ -231,8 +231,11 @@ CSVResult csv_close(CSV *csv) {
         csv_error(csv, "tried to close csv with no file opened");
         return CSV_ERR_FILE;
     }
-
     fclose(csv->fp);
+
+    csv->fp = NULL;
+    csv->fname = NULL;
+
     return CSV_OK;
 }
 
