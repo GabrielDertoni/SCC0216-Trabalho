@@ -118,18 +118,6 @@ void csv_drop(CSV csv) {
     }
 }
 
-char *csv_get_fname(CSV *csv) {
-    return csv->fname;
-}
-
-size_t csv_get_curr_field(CSV *csv) {
-    return csv->curr_field;
-}
-
-size_t csv_get_curr_line(CSV *csv) {
-    return csv->curr_line;
-}
-
 void csv_set_column(CSV *csv, size_t col_idx, Column column) {
     if (col_idx >= csv->n_columns) {
         fprintf(stderr, "csv_error: column index %zu is out of bounds for CSV.\n", col_idx);
@@ -343,7 +331,19 @@ void csv_print_header(CSV *csv) {
     printf("\n");
 }
 
-bool csv_is_open(CSV *csv) {
+char *csv_get_fname(const CSV *csv) {
+    return csv->fname;
+}
+
+size_t csv_get_curr_field(const CSV *csv) {
+    return csv->curr_field;
+}
+
+size_t csv_get_curr_line(const CSV *csv) {
+    return csv->curr_line;
+}
+
+bool csv_is_open(const CSV *csv) {
     return csv->fp != NULL;
 }
 
@@ -356,6 +356,10 @@ int csv_get_field_index(const CSV *csv, const char *field_name) {
     for (i = 0; i < csv->n_rows && strcmp(field_name, csv->columns[i].name) != 0; i++);
     if (i == csv->n_rows) return -1;
     return i;
+}
+
+const char *csv_get_col_name(const CSV *csv, int idx) {
+    return csv->columns[idx].name;
 }
 
 size_t csv_row_count(const CSV *csv) { return csv->n_rows; }

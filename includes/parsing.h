@@ -21,8 +21,10 @@ typedef struct {
     FILE *fp;
     size_t reg_count;
     size_t removed_reg_count;
-} VehicleIterArgs;
+} IterArgs;
 
-CSVResult vehicle_row_iterator(CSV *csv, const Vehicle *vehicle, VehicleIterArgs *args);
+CSVResult vehicle_row_iterator(CSV *csv, const Vehicle *vehicle, IterArgs *args);
+bool vehicle_csv_to_bin(const char *csv_fname, const char *bin_fname);
+bool bus_line_csv_to_bin(const char *csv_fname, const char *bin_fname);
 
 #endif

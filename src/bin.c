@@ -6,9 +6,8 @@
 
 #include <common.h>
 
-#define WASSERT(expr)           if ((expr) != 1) return false
-#define WASSERT_OR(expr, expr2) ({ if ((expr) != 1) { expr2; return false; } })
-#define POSITION(fp, off)       if (ftell(fp) != off) fseek(fp, off, SEEK_SET)
+#define WASSERT(expr)     if ((expr) != 1) return false
+#define POSITION(fp, off) if (ftell(fp) != off) fseek(fp, off, SEEK_SET)
 
 static inline DBMeta header_meta_default(uint32_t nroRegistros) {
     return (DBMeta) {
@@ -19,7 +18,7 @@ static inline DBMeta header_meta_default(uint32_t nroRegistros) {
     };
 }
 
-bool update_header_status(bool new_val, FILE *fp) {
+bool update_header_status(char new_val, FILE *fp) {
     POSITION(fp, 0);
     WASSERT(fwrite(&new_val, sizeof(new_val), 1, fp));
     return true;
@@ -62,103 +61,53 @@ bool write_vehicles_header(DBVehicleHeader header, FILE *fp) {
     return true;
 }
 
-/*
-bool write_vehicles_header(uint32_t nroRegistros, FILE *fp) {
-    DBVehicleHeader header = {
-        .meta              = header_meta_default(nroRegistros),
-        .descrevePrefixo   = "@@@",
-        .descreveData      = "@@@",
-        .descreveLugares   = "@@@",
-        .descreveLinhas    = "@@@",
-        .descreveModelo    = "@@@",
-        .descreveCategoria = "@@@",
-    };
-
-    WASSERT(write_header_meta(header.meta, fp));
-    WASSERT(fwrite(&header.descrevePrefixo  , sizeof(header.descrevePrefixo)  , 1, fp));
-    WASSERT(fwrite(&header.descreveData     , sizeof(header.descreveData)     , 1, fp));
-    WASSERT(fwrite(&header.descreveLugares  , sizeof(header.descreveLugares)  , 1, fp));
-    WASSERT(fwrite(&header.descreveLinhas   , sizeof(header.descreveLinhas)   , 1, fp));
-    WASSERT(fwrite(&header.descreveModelo   , sizeof(header.descreveModelo)   , 1, fp));
-    WASSERT(fwrite(&header.descreveCategoria, sizeof(header.descreveCategoria), 1, fp));
-    return true;
-}
-*/
-
-bool write_vehicle(Vehicle vehicle, FILE *fp) {
+bool write_vehicle(const Vehicle *vehicle, FILE *fp) {
     char prefixo[5];
 
     char removido;
-    if (vehicle.prefixo[0] == REMOVED_MARKER) {
+    if (vehicle->prefixo[0] == REMOVED_MARKER) {
         removido = '0';
-        memcpy(prefixo, &vehicle.prefixo[1], sizeof(prefixo) - 1);
+        memcpy(prefixo, &vehicle->prefixo[1], sizeof(prefixo) - 1);
         prefixo[4] = '\0';
     } else {
         removido = '1';
-        memcpy(prefixo, vehicle.prefixo, sizeof(prefixo));
+        memcpy(prefixo, vehicle->prefixo, sizeof(prefixo));
     }
 
-    uint32_t tamanhoModelo = vehicle.modelo ? strlen(vehicle.modelo) : 0;
-    uint32_t tamanhoCategoria = vehicle.categoria ? strlen(vehicle.categoria) : 0;
+    uint32_t tamanhoModelo = vehicle->modelo ? strlen(vehicle->modelo) : 0;
+    uint32_t tamanhoCategoria = vehicle->categoria ? strlen(vehicle->categoria) : 0;
     uint32_t tamanhoRegistro = 0;
-    tamanhoRegistro += sizeof(vehicle.prefixo);
-    tamanhoRegistro += sizeof(vehicle.data);
-    tamanhoRegistro += sizeof(vehicle.quantidadeLugares);
-    tamanhoRegistro += sizeof(vehicle.codLinha);
+    tamanhoRegistro += sizeof(vehicle->prefixo);
+    tamanhoRegistro += sizeof(vehicle->data);
+    tamanhoRegistro += sizeof(vehicle->quantidadeLugares);
+    tamanhoRegistro += sizeof(vehicle->codLinha);
     tamanhoRegistro += sizeof(tamanhoModelo);
     tamanhoRegistro += tamanhoModelo;
     tamanhoRegistro += sizeof(tamanhoCategoria);
     tamanhoRegistro += tamanhoCategoria;
 
-    WASSERT(fwrite(&removido                 , sizeof(removido)                 , 1, fp));
-    WASSERT(fwrite(&tamanhoRegistro          , sizeof(tamanhoRegistro)          , 1, fp));
-    WASSERT(fwrite(prefixo                   , sizeof(vehicle.prefixo)          , 1, fp));
-    WASSERT(fwrite(vehicle.data              , sizeof(vehicle.data)             , 1, fp));
-    WASSERT(fwrite(&vehicle.quantidadeLugares, sizeof(vehicle.quantidadeLugares), 1, fp));
-    WASSERT(fwrite(&vehicle.codLinha         , sizeof(vehicle.codLinha)         , 1, fp));
-    WASSERT(fwrite(&tamanhoModelo            , sizeof(tamanhoModelo)            , 1, fp));
+    WASSERT(fwrite(&removido                  , sizeof(removido)                  , 1, fp));
+    WASSERT(fwrite(&tamanhoRegistro           , sizeof(tamanhoRegistro)           , 1, fp));
+    WASSERT(fwrite(prefixo                    , sizeof(vehicle->prefixo)          , 1, fp));
+    WASSERT(fwrite(vehicle->data              , sizeof(vehicle->data)             , 1, fp));
+    WASSERT(fwrite(&vehicle->quantidadeLugares, sizeof(vehicle->quantidadeLugares), 1, fp));
+    WASSERT(fwrite(&vehicle->codLinha         , sizeof(vehicle->codLinha)         , 1, fp));
+    WASSERT(fwrite(&tamanhoModelo             , sizeof(tamanhoModelo)             , 1, fp));
 
     if (tamanhoModelo > 0) {
-        WASSERT(fwrite(vehicle.modelo        , tamanhoModelo * sizeof(char)     , 1, fp));
+        WASSERT(fwrite(vehicle->modelo        , tamanhoModelo * sizeof(char)      , 1, fp));
     }
 
-    WASSERT(fwrite(&tamanhoCategoria         , sizeof(tamanhoCategoria)         , 1, fp));
+    WASSERT(fwrite(&tamanhoCategoria          , sizeof(tamanhoCategoria)          , 1, fp));
 
     if (tamanhoCategoria > 0) {
-        WASSERT(fwrite(vehicle.categoria     , tamanhoCategoria * sizeof(char)  , 1, fp));
+        WASSERT(fwrite(vehicle->categoria     , tamanhoCategoria * sizeof(char)   , 1, fp));
     }
 
     return true;
 }
 
-/*
-bool write_vehicles(Vehicle *vehicles, uint32_t n_vehicles, const char *fname) {
-    FILE *fp = fopen(fname, "w");
-    if (!fp) return false;
-
-    WASSERT_OR(write_vehicles_header(n_vehicles, fp), fclose(fp));
-
-    for (int i = 0; i < n_vehicles; i++) {
-        WASSERT_OR(write_vehicle(vehicles[i], fp), fclose(fp));
-    }
-    uint64_t curr_pos = ftell(fp);
-    WASSERT_OR(update_header_byte_next_reg(curr_pos, fp), fclose(fp));
-
-    update_header_status(true, fp);
-    fclose(fp);
-    return true;
-}
-*/
-
-bool write_bus_lines_header(uint32_t nroRegistros, FILE *fp) {
-    DBLineHeader header = {
-        .meta           = header_meta_default(nroRegistros),
-        .descreveCodigo = "@@@",
-        .descreveCartao = "@@@",
-        .descreveNome   = "@@@",
-        .descreveCor    = "@@@",
-    };
-
+bool write_bus_lines_header(DBBusLineHeader header, FILE *fp) {
     WASSERT(write_header_meta(header.meta, fp));
     WASSERT(fwrite(&header.descreveCodigo, sizeof(header.descreveCodigo), 1, fp));
     WASSERT(fwrite(&header.descreveCartao, sizeof(header.descreveCartao), 1, fp));
@@ -168,48 +117,41 @@ bool write_bus_lines_header(uint32_t nroRegistros, FILE *fp) {
 }
 
 bool write_bus_line(BusLine line, FILE *fp) {
-    bool removido = false;
+    int32_t codLinha;
+
+    char removido;
+    if (line.codLinha[0] == REMOVED_MARKER) {
+        removido = '0';
+        codLinha = (int)strtol(&line.codLinha[1], NULL, 10);
+    } else {
+        removido = '1';
+        codLinha = (int)strtol(line.codLinha, NULL, 10);
+    }
+
     uint32_t tamanhoNome = line.nomeLinha ? strlen(line.nomeLinha) : 0;
     uint32_t tamanhoCor  = line.corLinha ? strlen(line.corLinha) : 0;
     uint32_t tamanhoRegistro = 0;
-    tamanhoRegistro += sizeof(line.codLinha);
+    tamanhoRegistro += sizeof(codLinha);
     tamanhoRegistro += sizeof(line.aceitaCartao);
+    tamanhoRegistro += sizeof(tamanhoNome);
     tamanhoRegistro += tamanhoNome;
+    tamanhoRegistro += sizeof(tamanhoCor);
     tamanhoRegistro += tamanhoCor;
 
     WASSERT(fwrite(&removido         , sizeof(removido)          , 1, fp));
     WASSERT(fwrite(&tamanhoRegistro  , sizeof(tamanhoRegistro)   , 1, fp));
-    WASSERT(fwrite(&line.codLinha    , sizeof(line.codLinha)     , 1, fp));
+    WASSERT(fwrite(&codLinha         , sizeof(codLinha)          , 1, fp));
     WASSERT(fwrite(&line.aceitaCartao, sizeof(line.aceitaCartao) , 1, fp));
     WASSERT(fwrite(&tamanhoNome      , sizeof(tamanhoNome)       , 1, fp));
-    WASSERT(fwrite(&line.nomeLinha   , tamanhoNome * sizeof(char), 1, fp));
+
+    if (tamanhoNome > 0) {
+        WASSERT(fwrite(line.nomeLinha, tamanhoNome * sizeof(char), 1, fp));
+    }
+
     WASSERT(fwrite(&tamanhoCor       , sizeof(tamanhoCor)        , 1, fp));
-    WASSERT(fwrite(&line.corLinha    , tamanhoCor * sizeof(char) , 1, fp));
-    return true;
-}
 
-bool write_bus_lines(BusLine *lines, uint32_t n_lines, const char *fname) {
-    FILE *fp = fopen(fname, "w");
-    if (!fp) return false;
-
-    if (!write_bus_lines_header(n_lines, fp)) {
-        fclose(fp);
-        return false;
+    if (tamanhoCor > 0) {
+        WASSERT(fwrite(line.corLinha , tamanhoCor * sizeof(char) , 1, fp));
     }
-
-    for (int i = 0; i < n_lines; i++) {
-        if(!write_bus_line(lines[i], fp)) {
-            fclose(fp);
-            return false;
-        }
-    }
-    uint64_t curr_pos = ftell(fp);
-    if(!update_header_byte_next_reg(curr_pos, fp)) {
-        fclose(fp);
-        return false;
-    }
-
-    update_header_status(true, fp);
-    fclose(fp);
     return true;
 }

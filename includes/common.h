@@ -4,11 +4,12 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#define META_SIZE 17
-#define VEHICLE_HEADER_SIZE (157 + META_SIZE)
+#define META_SIZE            17
+#define VEHICLE_HEADER_SIZE  (158 + META_SIZE)
+#define BUS_LINE_HEADER_SIZE ( 65 + META_SIZE)
 
-#define NULL_VAL "NULO"
-#define REMOVED_MARKER '*'
+#define NULL_VAL             "NULO"
+#define REMOVED_MARKER       '*'
 
 typedef struct {
     char    prefixo[5];
@@ -20,10 +21,10 @@ typedef struct {
 } Vehicle;
 
 typedef struct {
-    int32_t codLinha;
-    char    aceitaCartao;
-    char    *nomeLinha;
-    char    *corLinha;
+    char codLinha[32];
+    char aceitaCartao;
+    char *nomeLinha;
+    char *corLinha;
 } BusLine;
 
 typedef struct {
@@ -49,7 +50,7 @@ typedef struct {
     char   descreveCartao[13];
     char   descreveNome[13];
     char   descreveCor[24];
-} DBLineHeader;
+} DBBusLineHeader;
 
 typedef struct {
     char      removido;

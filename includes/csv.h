@@ -46,14 +46,14 @@
 #define csv_column(strct, member, args...) \
     _csv_column(strct, member, args)
 
-#define CSV_IS_ERROR(res) (res & 0b1000)
+#define CSV_IS_ERROR(res) (res != 0)
 
 typedef enum {
-    CSV_OK        = 0b0000,
-    CSV_ERR_FILE  = 0b1000,
-    CSV_ERR_PARSE = 0b1001,
-    CSV_ERR_EOF   = 0b1010,
-    CSV_ERR_OTHER = 0b1011,
+    CSV_OK = 0,
+    CSV_ERR_FILE,
+    CSV_ERR_PARSE,
+    CSV_ERR_EOF,
+    CSV_ERR_OTHER,
 } CSVResult;
 
 typedef struct Column Column;
@@ -112,11 +112,6 @@ CSVResult csv_iterate_rows(CSV *csv, const char *sep, IterFunc *iter, void *arg)
 CSVResult csv_parse_next_row(CSV *csv, void *strct, const char *sep);
 CSVResult csv_parse_header(CSV *csv, const char *sep);
 
-bool csv_is_open(CSV *csv);
-char *csv_get_fname(CSV *csv);
-size_t csv_get_curr_field(CSV *csv);
-size_t csv_get_curr_line(CSV *csv);
-
 /**
  * Registra uma nova coluna para o csv.
  *
@@ -149,6 +144,12 @@ CSVResult csv_parse_file(CSV *csv, const char *fname, const char *sep);
  *         registradas. Pode ser convertido para um vetor do struct espelhado. [ref]
  */
 void *csv_get_raw_values(const CSV *csv);
+
+const char *csv_get_col_name(const CSV *csv, int idx);
+bool csv_is_open(const CSV *csv);
+char *csv_get_fname(const CSV *csv);
+size_t csv_get_curr_field(const CSV *csv);
+size_t csv_get_curr_line(const CSV *csv);
 
 /**
  * Retorna o número de linhas lidas.
