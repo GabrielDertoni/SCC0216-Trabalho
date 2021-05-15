@@ -19,6 +19,7 @@
 #ifndef __CSV_H__
 #define __CSV_H__
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -30,7 +31,7 @@
 #define csv_model(strct, n)     csv_new(sizeof(strct), n);
 #define csv_get_values(csv, ty) ((ty *)csv_get_raw_values(csv))
 
-#define csv_dynamic_field(parse) (ParseFunc *)parse, (DropFunc *)heap_drop
+#define csv_dynamic_field(parse) (ParseFunc *)parse, (DropFunc *)free
 #define csv_static_field(parse) (ParseFunc *)parse, (DropFunc *)NULL
 
 #define _csv_column(strct, member, parse, drop) \
@@ -45,12 +46,14 @@
 #define csv_column(strct, member, args...) \
     _csv_column(strct, member, args)
 
-#define CSV_IS_ERROR(res) (res == CSV_ERR_PARSE || res == CSV_ERR_FILE)
+#define CSV_IS_ERROR(res) (res & 0b1000)
 
 typedef enum {
-    CSV_ERR_FILE,
-    CSV_ERR_PARSE,
-    CSV_OK,
+    CSV_OK        = 0b0000,
+    CSV_ERR_FILE  = 0b1000,
+    CSV_ERR_PARSE = 0b1001,
+    CSV_ERR_EOF   = 0b1010,
+    CSV_ERR_OTHER = 0b1011,
 } CSVResult;
 
 typedef struct Column Column;
@@ -65,11 +68,13 @@ typedef struct {
     size_t elsize;
     void *values;
     char *fname;
+    FILE *fp;
     char *error_msg;
 } CSV;
 
 typedef CSVResult (ParseFunc)(CSV *, const char *, void *);
 typedef void (DropFunc)(void *);
+typedef CSVResult (IterFunc)(CSV *, const void *, void *arg);
 
 struct Column {
     size_t size;
@@ -97,8 +102,17 @@ CSV csv_new(size_t elsize, size_t n_columns);
  */
 void csv_drop(CSV csv);
 
+void csv_error(CSV *csv, const char *format, ...);
 void csv_error_curr(CSV *csv, const char *format, ...);
 
+CSVResult csv_open(CSV *csv, const char *fname);
+CSVResult csv_close(CSV *csv);
+
+CSVResult csv_iterate_rows(CSV *csv, const char *sep, IterFunc *iter, void *arg);
+CSVResult csv_parse_next_row(CSV *csv, void *strct, const char *sep);
+CSVResult csv_parse_header(CSV *csv, const char *sep);
+
+bool csv_is_open(CSV *csv);
 char *csv_get_fname(CSV *csv);
 size_t csv_get_curr_field(CSV *csv);
 size_t csv_get_curr_line(CSV *csv);
@@ -173,15 +187,6 @@ Column csv_column_new(size_t size, size_t offset, const char *name, ParseFunc *p
  * @param csv - o csv utilizado para a impressão. [ref]
  */
 void csv_print_header(CSV *csv);
-
-// CSVResult csv_parse_string(CSV *csv, const char *input, Value *field);
-// CSVResult csv_parse_i32(CSV *csv, const char *input, Value *field);
-
-void id_drop(void *ptr);
-void heap_drop(void *ptr);
-
-#define CSV_STRING (ParseFunc *)csv_parse_string, (DropFunc *)heap_drop
-#define CSV_I32 (ParseFunc *)csv_parse_i32, (DropFunc *)id_drop
 
 #endif
 

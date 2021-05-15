@@ -51,6 +51,18 @@ bool write_header_meta(DBMeta meta, FILE *fp) {
     return true;
 }
 
+bool write_vehicles_header(DBVehicleHeader header, FILE *fp) {
+    WASSERT(write_header_meta(header.meta, fp));
+    WASSERT(fwrite(&header.descrevePrefixo  , sizeof(header.descrevePrefixo)  , 1, fp));
+    WASSERT(fwrite(&header.descreveData     , sizeof(header.descreveData)     , 1, fp));
+    WASSERT(fwrite(&header.descreveLugares  , sizeof(header.descreveLugares)  , 1, fp));
+    WASSERT(fwrite(&header.descreveLinhas   , sizeof(header.descreveLinhas)   , 1, fp));
+    WASSERT(fwrite(&header.descreveModelo   , sizeof(header.descreveModelo)   , 1, fp));
+    WASSERT(fwrite(&header.descreveCategoria, sizeof(header.descreveCategoria), 1, fp));
+    return true;
+}
+
+/*
 bool write_vehicles_header(uint32_t nroRegistros, FILE *fp) {
     DBVehicleHeader header = {
         .meta              = header_meta_default(nroRegistros),
@@ -71,9 +83,21 @@ bool write_vehicles_header(uint32_t nroRegistros, FILE *fp) {
     WASSERT(fwrite(&header.descreveCategoria, sizeof(header.descreveCategoria), 1, fp));
     return true;
 }
+*/
 
 bool write_vehicle(Vehicle vehicle, FILE *fp) {
-    bool removido = false;
+    char prefixo[5];
+
+    char removido;
+    if (vehicle.prefixo[0] == REMOVED_MARKER) {
+        removido = '0';
+        memcpy(prefixo, &vehicle.prefixo[1], sizeof(prefixo) - 1);
+        prefixo[4] = '\0';
+    } else {
+        removido = '1';
+        memcpy(prefixo, vehicle.prefixo, sizeof(prefixo));
+    }
+
     uint32_t tamanhoModelo = vehicle.modelo ? strlen(vehicle.modelo) : 0;
     uint32_t tamanhoCategoria = vehicle.categoria ? strlen(vehicle.categoria) : 0;
     uint32_t tamanhoRegistro = 0;
@@ -81,22 +105,33 @@ bool write_vehicle(Vehicle vehicle, FILE *fp) {
     tamanhoRegistro += sizeof(vehicle.data);
     tamanhoRegistro += sizeof(vehicle.quantidadeLugares);
     tamanhoRegistro += sizeof(vehicle.codLinha);
+    tamanhoRegistro += sizeof(tamanhoModelo);
     tamanhoRegistro += tamanhoModelo;
+    tamanhoRegistro += sizeof(tamanhoCategoria);
     tamanhoRegistro += tamanhoCategoria;
 
     WASSERT(fwrite(&removido                 , sizeof(removido)                 , 1, fp));
     WASSERT(fwrite(&tamanhoRegistro          , sizeof(tamanhoRegistro)          , 1, fp));
-    WASSERT(fwrite(vehicle.prefixo           , sizeof(vehicle.prefixo)          , 1, fp));
+    WASSERT(fwrite(prefixo                   , sizeof(vehicle.prefixo)          , 1, fp));
     WASSERT(fwrite(vehicle.data              , sizeof(vehicle.data)             , 1, fp));
     WASSERT(fwrite(&vehicle.quantidadeLugares, sizeof(vehicle.quantidadeLugares), 1, fp));
     WASSERT(fwrite(&vehicle.codLinha         , sizeof(vehicle.codLinha)         , 1, fp));
     WASSERT(fwrite(&tamanhoModelo            , sizeof(tamanhoModelo)            , 1, fp));
-    WASSERT(fwrite(vehicle.modelo            , tamanhoModelo * sizeof(char)     , 1, fp));
+
+    if (tamanhoModelo > 0) {
+        WASSERT(fwrite(vehicle.modelo        , tamanhoModelo * sizeof(char)     , 1, fp));
+    }
+
     WASSERT(fwrite(&tamanhoCategoria         , sizeof(tamanhoCategoria)         , 1, fp));
-    WASSERT(fwrite(vehicle.categoria         , tamanhoCategoria * sizeof(char)  , 1, fp));
+
+    if (tamanhoCategoria > 0) {
+        WASSERT(fwrite(vehicle.categoria     , tamanhoCategoria * sizeof(char)  , 1, fp));
+    }
+
     return true;
 }
 
+/*
 bool write_vehicles(Vehicle *vehicles, uint32_t n_vehicles, const char *fname) {
     FILE *fp = fopen(fname, "w");
     if (!fp) return false;
@@ -113,6 +148,7 @@ bool write_vehicles(Vehicle *vehicles, uint32_t n_vehicles, const char *fname) {
     fclose(fp);
     return true;
 }
+*/
 
 bool write_bus_lines_header(uint32_t nroRegistros, FILE *fp) {
     DBLineHeader header = {

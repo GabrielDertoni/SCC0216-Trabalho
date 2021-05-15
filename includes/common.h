@@ -4,6 +4,12 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#define META_SIZE 17
+#define VEHICLE_HEADER_SIZE (157 + META_SIZE)
+
+#define NULL_VAL "NULO"
+#define REMOVED_MARKER '*'
+
 typedef struct {
     char    prefixo[5];
     char    data[10];
@@ -21,7 +27,7 @@ typedef struct {
 } BusLine;
 
 typedef struct {
-    bool     status;
+    char     status;
     uint64_t byteProxReg;
     uint32_t nroRegistros;
     uint32_t nroRegRemovidos;
@@ -46,7 +52,7 @@ typedef struct {
 } DBLineHeader;
 
 typedef struct {
-    bool      removido;
+    char      removido;
     uint32_t  tamanhoRegistro;
     char      prefixo[5];
     char      data[10];
