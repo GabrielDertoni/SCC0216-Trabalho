@@ -32,15 +32,15 @@
 #define csv_get_values(csv, ty) ((ty *)csv_get_raw_values(csv))
 
 #define csv_dynamic_field(parse) (ParseFunc *)parse, (DropFunc *)free
-#define csv_static_field(parse) (ParseFunc *)parse, (DropFunc *)NULL
+#define csv_static_field(parse)  (ParseFunc *)parse, (DropFunc *)NULL
 
 #define _csv_column(strct, member, parse, drop) \
-    csv_column_new( \
-        member_sizeof(strct, member), \
-        offsetof(strct, member), \
-        NULL, \
-        parse, \
-        drop \
+    csv_column_new(                             \
+        member_sizeof(strct, member),           \
+        offsetof(strct, member),                \
+        NULL,                                   \
+        parse,                                  \
+        drop                                    \
     )
 
 #define csv_column(strct, member, args...) \
