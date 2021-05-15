@@ -300,6 +300,7 @@ CSVResult csv_iterate_rows(CSV *csv, const char *sep, IterFunc *iter, void *arg)
         status = csv_parse_next_row(csv, (void *)&strct, sep);
         if (status == CSV_OK) {
             status = iter(csv, (const void *)&strct, arg);
+            free_row(csv, (void *)&strct);
         }
     } while (status == CSV_OK);
 
