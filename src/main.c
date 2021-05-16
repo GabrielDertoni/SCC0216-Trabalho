@@ -9,19 +9,14 @@
 #include <bin.h>
 #include <external.h>
 
-#define CSV_ASSERT(csv, expr) \
-    if (!(expr)) \
-        print_error_exit(csv) \
-
-void print_error_exit(CSV csv) {
-    fprintf(stderr, "Error: %s.\n", csv.error_msg);
-
-    csv_drop(csv);
-    exit(1);
-}
-
 int main(int argc, char *argv[]) {
     vehicle_csv_to_bin("data/veiculo.csv", "veiculo.bin");
     bus_line_csv_to_bin("data/linha.csv", "linha.bin");
+
+    printf("veiculo.bin: ");
+    binarioNaTela("veiculo.bin");
+
+    printf("linha.bin: ");
+    binarioNaTela("linha.bin");
     return 0;
 }

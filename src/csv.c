@@ -9,17 +9,20 @@
 #include <csv.h>
 #include <utils.h>
 
+// Macro that asserts that a certain expression evaluates to `CSV_OK`. In case
+// it does not, return the resulting value from the surrounding function.
 #define ASSERT_OK(val) \
     do { \
         CSVResult __tmp = (val); \
         if (__tmp != CSV_OK) return __tmp; \
     } while(0)
 
+// The minimum capacity that the register buffer can have.
 #define MIN_CAPACITY 8
 
 // Static line buffer. This buffer will be only be reallocated a few times. It
-// is reused for every line read which makes it very efficient. When every `CSV`
-// object is dropped, so will the line buffer.
+// is reused for every line read which makes it very efficient. It is freed when
+// every `CSV` object is dropped.
 static char *line = NULL;
 static size_t line_cap = 0;
 
@@ -35,12 +38,15 @@ static void free_row(CSV *csv, void *value) {
     }
 }
 
+// Removes from the end of `str` as many chars contained in `to_strip` as it can
+// before it finds some char not int `to_strip`.
 static void strip_end(char *str, const char *to_strip) {
     int i;
     for (i = strlen(str) - 1; strchr(to_strip, str[i]) && i > 0; i--);
     if (str[i] != '\0') str[i+1] = '\0';
 }
 
+// Set csv `error_msg` to some format with variable arguments list.
 static void verror(CSV *csv, const char *format, va_list ap) {
     if (csv->error_msg) free(csv->error_msg);
     csv->error_msg = alloc_vsprintf(format, ap);
@@ -109,10 +115,10 @@ void csv_drop(CSV csv) {
         free(csv.error_msg);
 
     // When all instances are deallocated, there is no reason to mantain the
-    // allocation of the line. This ensures that if all `CSV` instances are
-    // freed, then `line` will also be freed.
+    // allocation of `line`. This ensures that if all `CSV` instances are freed,
+    // then `line` will also be freed.
     if (--instances_count == 0) {
-        free(line);
+        if (line) free(line);
         line     = NULL;
         line_cap = 0;
     }
@@ -126,10 +132,8 @@ void csv_set_column(CSV *csv, size_t col_idx, Column column) {
     csv->columns[col_idx] = column;
 }
 
-static CSVResult csv_parse_value(CSV *csv, Column col, void *field, const char *input) {
-    return col.parse(csv, input, field);
-}
-
+// Parses a single row of `csv` from `input` using `sep` as a field separator.
+// Writes in the `row_values` buffer.
 static CSVResult csv_parse_row_into(CSV *csv, char *input, const char *sep, void *row_values) {
     char *parse_field, *parse_ptr = input;
 
@@ -142,7 +146,7 @@ static CSVResult csv_parse_row_into(CSV *csv, char *input, const char *sep, void
 
         void *field = row_values + col.offset;
 
-        status = csv_parse_value(csv, col, field, parse_field);
+        status = col.parse(csv, parse_field, field);
 
         if (status == CSV_OK) {
             i++;
@@ -173,6 +177,8 @@ static CSVResult csv_parse_row_into(CSV *csv, char *input, const char *sep, void
     return status;
 }
 
+// Parses a row of `csv` from `input` with field separator `sep`. Writes the
+// result into the buffer of `csv` expanding the buffer if necessary.
 static CSVResult csv_parse_row(CSV *csv, char *input, const char *sep) {
     // Dynamically allocate memory for the rows.
     if (csv->n_rows >= csv->capacity) {
@@ -280,8 +286,8 @@ CSVResult csv_parse_next_row(CSV *csv, void *strct, const char *sep) {
     return csv_parse_row_into(csv, line, sep, strct);
 }
 
-CSVResult csv_iterate_rows(CSV *csv, const char *sep, IterFunc *iter, void *arg) {
-    // Using a VLA here might not be the best solution. But it should be faster
+CSVResult csv_iterate_rows(CSV *csv, const char *sep, const IterFunc *iter, void *arg) {
+    // Using a VLA here might not be the best solution, but it should be faster
     // than a heap allocation. Has to be aligned to the biggest alignment so
     // that no words or types are broken in half.
     uint8_t strct[csv->elsize] __attribute__ ((aligned (__BIGGEST_ALIGNMENT__)));
@@ -331,7 +337,11 @@ void csv_print_header(CSV *csv) {
     printf("\n");
 }
 
-char *csv_get_fname(const CSV *csv) {
+const char *csv_get_error(const CSV *csv) {
+    return csv->error_msg;
+}
+
+const char *csv_get_fname(const CSV *csv) {
     return csv->fname;
 }
 
@@ -364,7 +374,13 @@ const char *csv_get_col_name(const CSV *csv, int idx) {
 
 size_t csv_row_count(const CSV *csv) { return csv->n_rows; }
 
-Column csv_column_new(size_t size, size_t offset, const char *name, ParseFunc *parse, DropFunc *drop) {
+Column csv_column_new(
+    size_t size,
+    size_t offset,
+    const char *name,
+    const ParseFunc *parse,
+    const DropFunc *drop
+) {
     return (Column) {
         .size   = size,
         .offset = offset,

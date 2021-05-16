@@ -8,8 +8,9 @@
 #include <csv.h>
 #include <bin.h>
 
+// Imprime um erro do csv.
 void print_error(CSV *csv) {
-    fprintf(stderr, "Error: %s.\n", csv->error_msg);
+    fprintf(stderr, "Error: %s.\n", csv_get_error(csv));
 }
 
 static CSVResult parse_i32(CSV *csv, const char *input, int32_t *field) {
@@ -142,7 +143,7 @@ static CSVResult vehicle_parse_data(CSV *csv, const char *input, char (*field)[1
 }
 
 CSV configure_vehicle_csv() {
-    CSV csv = csv_new(sizeof(Vehicle), 6);
+    CSV csv = csv_model(Vehicle, 6);
 
     csv_set_column(&csv, 0, csv_column(Vehicle, prefixo          , csv_static_field(vehicle_parse_prefixo)));
     csv_set_column(&csv, 1, csv_column(Vehicle, data             , csv_static_field(vehicle_parse_data)));
@@ -163,7 +164,7 @@ static CSVResult bus_line_parse_codLinha(CSV *csv, const char *input, char (*fie
 }
 
 CSV configure_bus_line_csv() {
-    CSV csv = csv_new(sizeof(BusLine), 4);
+    CSV csv = csv_model(BusLine, 4);
 
     csv_set_column(&csv, 0, csv_column(BusLine, codLinha    , csv_static_field(bus_line_parse_codLinha)));
     csv_set_column(&csv, 1, csv_column(BusLine, aceitaCartao, csv_static_field(bus_line_parse_aceitaCartao)));
@@ -203,17 +204,40 @@ CSVResult bus_line_row_iterator(CSV *csv, const BusLine *bus_line, IterArgs *arg
     }
 }
 
+// Uma nota sobre `goto`
+//
+// Nesse caso, `goto` é utilizado para reduzir código repetido. Sempre que há
+// algum erro, queremos liberar o csv no qual estamos operando e fechar o
+// arquivo binário. Isso também é feito ao final da função.
+//
+// Usando `goto`, fica explícito que quado ocorre algum erro, queremos pular
+// todo o resto e ir direto para a parte que liberamos tudo.
+//
+// Alternativamente teríamos que replicar a operação de liberar tudo e retornar
+// a cada verificação de erro o que aumenta a chance de errar no código.
+// 
+// O `do while` só é utilizado para que possamos escrever um ';' depois da
+// utilização do macro.
+
+// Verifica se uma determinada expressão é um erro. Se for, imprime o erro e
+// pula para o label `teardown`.
 #define CSV_ASSERT(expr)          \
     do {                          \
         if (CSV_IS_ERROR(expr)) { \
             print_error(&csv);    \
             goto teardown;        \
         }                         \
-    } while (0);
+    } while (0)
 
-#define WASSERT(expr) \
-    if ((expr) != 0) \
-        goto teardown
+// Verifica se um determinado valor é diferente de 0. Se for, vai diretamente
+// para o label `teardown`.
+#define ASSERT_OR(expr, msg, ...)              \
+    do {                                       \
+        if ((expr) != 0) {                     \
+            fprintf(stderr, msg, __VA_ARGS__); \
+            goto teardown;                     \
+        }                                      \
+    } while (0)
 
 bool vehicle_csv_to_bin(const char *csv_fname, const char *bin_fname) {
     CSV csv = configure_vehicle_csv();
@@ -230,17 +254,33 @@ bool vehicle_csv_to_bin(const char *csv_fname, const char *bin_fname) {
     CSV_ASSERT(res = csv_open(&csv, csv_fname));
     CSV_ASSERT(res = csv_parse_header(&csv, ","));
 
-    char status = '0';
-    WASSERT(res = !fwrite(&status, sizeof(char), 1, fp));
+    // Primeira escrita, escreve o byte de status para garantir que outros
+    // processos tentando ler o arquivo não leiam algo incompleto.
+    ASSERT_OR(
+        res = !update_header_status('0', fp),
+        "Error: could not write status to file %s.\n",
+        bin_fname
+    );
+
+    // Pula o header. Como nem todas as informações são conhecidas nesse
+    // momento, primeiro processamos as linhas e depois voltamos para escrever o
+    // header.
     fseek(fp, VEHICLE_HEADER_SIZE, SEEK_SET);
 
+    // Configura os argumentos do iterador. Esses valores serão modificados para
+    // conter alguns dados que só podem ser contados lendo todos os registros.
     IterArgs args = {
         .fp                = fp,
         .reg_count         = 0,
         .removed_reg_count = 0,
     };
 
-    CSV_ASSERT(res = csv_iterate_rows(&csv, ",", (IterFunc *)vehicle_row_iterator, &args));
+    // Itera por todas as linhas do csv e escreve os registros no binário.
+    CSV_ASSERT(res = csv_iterate_rows(&csv, ",", (const IterFunc *)vehicle_row_iterator, &args));
+
+    // Voltamos ao começo do arquivo para escrever as últimas coisas antes de
+    // finalizar o processamento.
+    fseek(fp, 0L, SEEK_SET);
 
     DBMeta meta = {
         .status          = '1',
@@ -258,14 +298,20 @@ bool vehicle_csv_to_bin(const char *csv_fname, const char *bin_fname) {
     memcpy(&header.descreveModelo   , csv_get_col_name(&csv, 4), sizeof(header.descreveModelo));
     memcpy(&header.descreveCategoria, csv_get_col_name(&csv, 5), sizeof(header.descreveCategoria));
 
-    fseek(fp, 0L, SEEK_SET);
-    WASSERT(res = !write_vehicles_header(header, fp));
+    ASSERT_OR(
+        res = !write_vehicles_header(header, fp),
+        "Error: could not write vehicle header to %s.\n",
+        bin_fname
+    );
 
 teardown:
+    // Libera os valores abertos/alocados.
     fclose(fp);
     csv_drop(csv);
 
-    return !CSV_IS_ERROR(res);
+    // Nesse momento, `res = 0` somente se não houve erro. Mas nesse caso
+    // queremos retornar `true`.
+    return !res;
 }
 
 bool bus_line_csv_to_bin(const char *csv_fname, const char *bin_fname) {
@@ -282,17 +328,33 @@ bool bus_line_csv_to_bin(const char *csv_fname, const char *bin_fname) {
     CSV_ASSERT(res = csv_open(&csv, csv_fname));
     CSV_ASSERT(res = csv_parse_header(&csv, ","));
 
-    char status = '0';
-    WASSERT(res = !fwrite(&status, sizeof(char), 1, fp));
+    // Primeira escrita, escreve o byte de status para garantir que outros
+    // processos tentando ler o arquivo não leiam algo incompleto.
+    ASSERT_OR(
+        res = !update_header_status('0', fp),
+        "Error: could not write status to file %s.",
+        bin_fname
+    );
+
+    // Pula o header. Como nem todas as informações são conhecidas nesse
+    // momento, primeiro processamos as linhas e depois voltamos para escrever o
+    // header.
     fseek(fp, BUS_LINE_HEADER_SIZE, SEEK_SET);
 
+    // Configura os argumentos do iterador. Esses valores serão modificados para
+    // conter alguns dados que só podem ser contados lendo todos os registros.
     IterArgs args = {
         .fp                = fp,
         .reg_count         = 0,
         .removed_reg_count = 0,
     };
 
-    CSV_ASSERT(res = csv_iterate_rows(&csv, ",", (IterFunc *)bus_line_row_iterator, &args));
+    // Itera por todas as linhas do csv e escreve os registros no binário.
+    CSV_ASSERT(res = csv_iterate_rows(&csv, ",", (const IterFunc *)bus_line_row_iterator, &args));
+
+    // Voltamos ao começo do arquivo para escrever as últimas coisas antes de
+    // finalizar o processamento.
+    fseek(fp, 0L, SEEK_SET);
 
     DBMeta meta = {
         .status          = '1',
@@ -308,14 +370,19 @@ bool bus_line_csv_to_bin(const char *csv_fname, const char *bin_fname) {
     memcpy(&header.descreveNome  , csv_get_col_name(&csv, 2), sizeof(header.descreveNome));
     memcpy(&header.descreveCor   , csv_get_col_name(&csv, 3), sizeof(header.descreveCor));
 
-    fseek(fp, 0L, SEEK_SET);
-    WASSERT(res = !write_bus_lines_header(header, fp));
+    ASSERT_OR(
+        res = !write_bus_lines_header(header, fp),
+        "Error: could not write bus lines header to file %s.",
+        bin_fname
+    );
 
 teardown:
+    // Libera os valores abertos/alocados.
     fclose(fp);
     csv_drop(csv);
 
-    return !CSV_IS_ERROR(res);
-}
 
-#undef CSV_ASSERT
+    // Nesse momento, `res = 0` somente se não houve erro. Mas nesse caso
+    // queremos retornar `true`.
+    return !res;
+}

@@ -1,3 +1,17 @@
+/**
+ * Módulo de leitura e escrita nos arquivos binários.
+ *
+ * Esse módulo possui uma coleção de funções que leem e escrevem em arquivos
+ * binários com registros de veículos ou de linhas de ônibus. Cada função
+ * retorna um `bool` que indica se a operação foi ou não um sucesso.
+ * 
+ * Além disso há uma convensão no prefixo dos nomes:
+ *  > update - funções que podem mover o ponteiro de arquivo e escrevem nele.
+ *  > write  - funções que escrevem num arquivo sem mover o ponteiro.
+ *  > read   - funções que leem de um arquivo sem mover o ponteiro
+ *
+ */
+
 #ifndef BIN_H
 #define BIN_H
 

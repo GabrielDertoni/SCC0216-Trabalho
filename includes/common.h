@@ -52,6 +52,7 @@ typedef struct {
     char   descreveCor[24];
 } DBBusLineHeader;
 
+/*
 typedef struct {
     char      removido;
     uint32_t  tamanhoRegistro;
@@ -74,7 +75,8 @@ typedef struct {
     char      *nomeLinha;
     uint32_t  tamanhoCor;
     char      *corLinha;
-} DBLineRegister;
+} DBBusLineRegister;
+*/
 
 
 #endif
