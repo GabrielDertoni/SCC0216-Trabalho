@@ -278,10 +278,6 @@ bool vehicle_csv_to_bin(const char *csv_fname, const char *bin_fname) {
     // Itera por todas as linhas do csv e escreve os registros no binário.
     CSV_ASSERT(res = csv_iterate_rows(&csv, ",", (const IterFunc *)vehicle_row_iterator, &args));
 
-    // Voltamos ao começo do arquivo para escrever as últimas coisas antes de
-    // finalizar o processamento.
-    fseek(fp, 0L, SEEK_SET);
-
     DBMeta meta = {
         .status          = '1',
         .byteProxReg     = ftell(fp),
@@ -290,6 +286,10 @@ bool vehicle_csv_to_bin(const char *csv_fname, const char *bin_fname) {
     };
 
     DBVehicleHeader header = { .meta = meta };
+
+    // Voltamos ao começo do arquivo para escrever as últimas coisas antes de
+    // finalizar o processamento.
+    fseek(fp, 0L, SEEK_SET);
 
     memcpy(&header.descrevePrefixo  , csv_get_col_name(&csv, 0), sizeof(header.descrevePrefixo));
     memcpy(&header.descreveData     , csv_get_col_name(&csv, 1), sizeof(header.descreveData));
@@ -352,9 +352,8 @@ bool bus_line_csv_to_bin(const char *csv_fname, const char *bin_fname) {
     // Itera por todas as linhas do csv e escreve os registros no binário.
     CSV_ASSERT(res = csv_iterate_rows(&csv, ",", (const IterFunc *)bus_line_row_iterator, &args));
 
-    // Voltamos ao começo do arquivo para escrever as últimas coisas antes de
-    // finalizar o processamento.
-    fseek(fp, 0L, SEEK_SET);
+    printf("Reg count = %ld\n", args.reg_count);
+    printf("Removed reg count = %ld\n", args.removed_reg_count);
 
     DBMeta meta = {
         .status          = '1',
@@ -364,6 +363,10 @@ bool bus_line_csv_to_bin(const char *csv_fname, const char *bin_fname) {
     };
 
     DBBusLineHeader header = { .meta = meta };
+
+    // Voltamos ao começo do arquivo para escrever as últimas coisas antes de
+    // finalizar o processamento.
+    fseek(fp, 0L, SEEK_SET);
 
     memcpy(&header.descreveCodigo, csv_get_col_name(&csv, 0), sizeof(header.descreveCodigo));
     memcpy(&header.descreveCartao, csv_get_col_name(&csv, 1), sizeof(header.descreveCartao));
