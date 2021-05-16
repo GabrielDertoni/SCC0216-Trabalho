@@ -26,13 +26,6 @@ Makefile. Por padrão essa localização é `target/test`.
 
 Para somente compilar os testes mas não rodar nenhum, use `make build_tests`.
 
-## Questões abertas
-- É melhor calcular qual será o `byteProxReg` antes mesmo de escrever no
-    arquivo? Ou vale mais a pena escrever primeiro e ver onde o ponteiro
-    termina?
-
 ## TODO
-- Renomear `Column` para `CSVColumn`
-- Status deve ser uma string de 1 byte. Valores devem se `'0'` ou `'1'`. Ou
-    seja, não é para ser um byte com o valor 1, mas sim o char `'1'`.
-- Considerar casos que começam com `'*'` como registros removidos.
+- Renomear `Column` para `CSVColumn`.
+- Mudar de `parsing.h` para `csv_to_bin.h`?
