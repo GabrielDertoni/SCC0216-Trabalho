@@ -46,6 +46,43 @@ static void strip_end(char *str, const char *to_strip) {
     if (str[i] != '\0') str[i+1] = '\0';
 }
 
+// Encontra a primeira ocorrência de algum dos bytes de `sep` que não esteja
+// entre aspas em `*parse_ptr`. Esse token é terminado sobreescrevendo o
+// separador por '\0', e `*parse_ptr` é atualizado para apontar para após o
+// token. Caso nenhum delimitador seja encontrado, o token é considerado como a
+// string toda e `*parse_ptr` se torna NULL. Possui suporte para escaping de
+// aspas duplas.
+//
+// Exemplos:
+// ```c
+// char my_fields[] = "\"hello, world\" \"bye\\\" bye\\\"\",123";
+// char *parse_ptr = my_fields;
+//
+// printf("%s\n", fieldsep(&parse_ptr, " ,")); // "hello, world"
+// printf("%s\n", fieldsep(&parse_ptr, " ,")); // "bye\" bye\""
+// printf("%s\n", fieldsep(&parse_ptr, " ,")); // 123
+// ```
+static char *fieldsep(char **parse_ptr, const char *sep) {
+    char *ptr = *parse_ptr;
+    bool in_quoted = false;
+
+    while (!strchr(sep, **parse_ptr) || in_quoted) {
+        // Skip escaped quote.
+        if      (**parse_ptr == '\\') (*parse_ptr)++;
+        else if (**parse_ptr == '"') in_quoted = !in_quoted;
+        (*parse_ptr)++;
+    }
+
+    if (**parse_ptr == '\0') {
+        *parse_ptr = NULL;
+    } else {
+        **parse_ptr = '\0';
+        (*parse_ptr)++;
+    }
+
+    return ptr;
+}
+
 // Set csv `error_msg` to some format with variable arguments list.
 static void verror(CSV *csv, const char *format, va_list ap) {
     if (csv->error_msg) free(csv->error_msg);
@@ -142,7 +179,7 @@ static CSVResult csv_parse_row_into(CSV *csv, char *input, const char *sep, void
 
     while (parse_ptr != NULL && status == CSV_OK && i < csv->n_columns) {
         Column col = csv->columns[i];
-        parse_field = strsep(&parse_ptr, sep);
+        parse_field = fieldsep(&parse_ptr, sep);
 
         void *field = row_values + col.offset;
 
@@ -201,6 +238,18 @@ static CSVResult csv_parse_row(CSV *csv, char *input, const char *sep) {
     return CSV_OK;
 }
 
+CSVResult csv_use_fp(CSV *csv, FILE *fp) {
+    if (csv->fp) {
+        csv_error(csv, "another file pointer is already in use");
+        return CSV_ERR_FILE;
+    }
+
+    csv->fp = fp;
+    csv->fname = "unknown";
+
+    return CSV_OK;
+}
+
 CSVResult csv_open(CSV *csv, const char *fname) {
     if (csv->fp) {
         csv_error(csv, "can not open another file with same handler");
@@ -225,7 +274,9 @@ CSVResult csv_close(CSV *csv) {
         csv_error(csv, "tried to close csv with no file opened");
         return CSV_ERR_FILE;
     }
-    fclose(csv->fp);
+
+    if (csv->fp != stdin && csv->fp != stdout && csv->fp != stderr)
+        fclose(csv->fp);
 
     csv->fp = NULL;
     csv->fname = NULL;
@@ -250,7 +301,8 @@ CSVResult csv_parse_header(CSV *csv, const char *sep) {
     int i;
     for (i = 0; parse_ptr != NULL && status == CSV_OK && i < csv->n_columns; i++) {
         Column *col = &csv->columns[i];
-        field = strsep(&parse_ptr, sep);
+
+        field = fieldsep(&parse_ptr, sep);
 
         if (!col->name) {
             col->name = strdup(field);
@@ -286,7 +338,7 @@ CSVResult csv_parse_next_row(CSV *csv, void *strct, const char *sep) {
     return csv_parse_row_into(csv, line, sep, strct);
 }
 
-CSVResult csv_iterate_rows(CSV *csv, const char *sep, const IterFunc *iter, void *arg) {
+CSVResult csv_iterate_rows(CSV *csv, const char *sep, IterFunc *iter, void *arg) {
     // Using a VLA here might not be the best solution, but it should be faster
     // than a heap allocation. Has to be aligned to the biggest alignment so
     // that no words or types are broken in half.
@@ -298,6 +350,8 @@ CSVResult csv_iterate_rows(CSV *csv, const char *sep, const IterFunc *iter, void
         if (status == CSV_OK) {
             status = iter(csv, (const void *)&strct, arg);
             free_row(csv, (void *)&strct);
+            csv->curr_line++;
+            csv->curr_field = 0;
         }
     } while (status == CSV_OK);
 
@@ -378,8 +432,8 @@ Column csv_column_new(
     size_t size,
     size_t offset,
     const char *name,
-    const ParseFunc *parse,
-    const DropFunc *drop
+    ParseFunc *parse,
+    DropFunc *drop
 ) {
     return (Column) {
         .size   = size,

@@ -13,6 +13,7 @@ void print_error(CSV *csv) {
     fprintf(stderr, "Error: %s.\n", csv_get_error(csv));
 }
 
+// Lê um número que caiba em 32 bits.
 static CSVResult parse_i32(CSV *csv, const char *input, int32_t *field) {
     if (!strcmp(input, NULL_VAL)) {
         *field = -1;
@@ -39,56 +40,53 @@ static CSVResult parse_i32(CSV *csv, const char *input, int32_t *field) {
     return CSV_OK;
 }
 
-static CSVResult parse_char(CSV *csv, const char *input, char *field, char default_val) {
-    if (!strcmp(input, NULL_VAL)) {
-        *field = default_val;
-        return CSV_OK;
-    }
-
-    if (input[0] == '\0') {
-        csv_error_curr(csv, "unexpected end of field");
-        return CSV_ERR_PARSE;
-    }
-
-    if (input[1] != '\0') {
-        csv_error_curr(csv, "expected field to be a single char");
-        return CSV_ERR_PARSE;
-    }
-
-    *field = input[0];
-    return CSV_OK;
-}
-
+// Lê uma string de tamanho fixo com valor padrão. Opcionalmente a string pode
+// estar entre aspas duplas.
 static CSVResult parse_static_string(
     CSV *csv,
     const char *input,
     char *field,
     size_t size,
-    char *default_val
+    const char *default_val
 ) {
     if (!strcmp(input, NULL_VAL)) {
         memcpy(field, default_val, size);
         return CSV_OK;
     }
 
-    for (size_t i = 0; i < size; i++) {
-        if (!input[i]) {
-            csv_error_curr(
-                csv,
-                "expected static string to be of size %zu but was of size %zu",
-                size,
-                i
-            );
-            return CSV_ERR_PARSE;
-        }
+    bool is_quoted = input[0] == '"';
+    if (is_quoted) {
+        input++;
     }
 
-    if (input[size] != '\0') {
+    size_t len = strlen(input);
+
+    const char *closing;
+    // Encontra uma '"' que não tenha '\\' antes.
+    do {
+        closing = strchr(&input[1], '"');
+    } while (closing && closing[-1] == '\\');
+
+    if (!closing) {
+        if (is_quoted) {
+            csv_error_curr(csv, "expected closing quote");
+            return CSV_ERR_PARSE;
+        }
+        closing = input + len;
+    } else {
+        if (closing[1] != '\0') {
+            csv_error_curr(csv, "expected closing quote to be at the end of field");
+            return CSV_ERR_PARSE;
+        }
+        len = closing - input;
+    }
+
+    if (len != size) {
         csv_error_curr(
             csv,
-            "expected static string to be of size %zu, but found larger string '%s'",
+            "expected static string to be of size %zu but was of size %zu",
             size,
-            input
+            len
         );
         return CSV_ERR_PARSE;
     }
@@ -97,6 +95,8 @@ static CSVResult parse_static_string(
     return CSV_OK;
 }
 
+// Lê uma string de tamanho variável mas que caiba dentro de um campo de tamanho
+// fixo.
 static CSVResult parse_static_dynamic_string(
     CSV *csv,
     const char *input,
@@ -124,20 +124,47 @@ static CSVResult parse_static_dynamic_string(
     return CSV_OK;
 }
 
+// Lê uma string de qualquer tamanho.
 static CSVResult parse_dynamic_string(CSV *csv, const char *input, char **field) {
     if (!strcmp(input, NULL_VAL)) {
         *field = NULL;
+        return CSV_OK;
+    }
+
+    bool is_quoted = input[0] == '"';
+    if (is_quoted) {
+        input++;
+    }
+
+    char *closing;
+    // Encontra uma '"' que não tenha '\\' antes.
+    do {
+        closing = strchr(&input[1], '"');
+    } while (closing && closing[-1] == '\\');
+
+    if (closing) {
+        if (closing[1] != '\0') {
+            csv_error_curr(csv, "expected closing quote to be at the end of field");
+            return CSV_ERR_PARSE;
+        }
+        *field = strndup(input, closing - input);
     } else {
+        if (is_quoted) {
+            csv_error_curr(csv, "expected closing quote");
+            return CSV_ERR_PARSE;
+        }
         *field = strdup(input);
     }
 
     return CSV_OK;
 }
 
+// Lê o campo "prefixo" de um registro de veículo. Wrapper para `parse_static_string`.
 static CSVResult vehicle_parse_prefixo(CSV *csv, const char *input, char (*field)[5]) {
     return parse_static_string(csv, input, (char *)field, sizeof(*field), "\0@@@@");
 }
 
+// Lê o campo "data" de um registro de veículo. Wrapper para `parse_static_string`.
 static CSVResult vehicle_parse_data(CSV *csv, const char *input, char (*field)[10]) {
     return parse_static_string(csv, input, (char *)field, sizeof(*field), "\0@@@@@@@@@");
 }
@@ -155,8 +182,8 @@ CSV configure_vehicle_csv() {
     return csv;
 }
 
-static CSVResult bus_line_parse_aceitaCartao(CSV *csv, const char *input, char *field) {
-    return parse_char(csv, input, field, 'N');
+static CSVResult bus_line_parse_aceitaCartao(CSV *csv, const char *input, char (*field)[1]) {
+    return parse_static_string(csv, input, (char *)field, sizeof(*field), "\0");
 }
 
 static CSVResult bus_line_parse_codLinha(CSV *csv, const char *input, char (*field)[32]) {
@@ -216,32 +243,47 @@ CSVResult bus_line_row_iterator(CSV *csv, const BusLine *bus_line, IterArgs *arg
 // Alternativamente teríamos que replicar a operação de liberar tudo e retornar
 // a cada verificação de erro o que aumenta a chance de errar no código.
 // 
-// O `do while` só é utilizado para que possamos escrever um ';' depois da
-// utilização do macro.
+// Nos macros `do while` só é utilizado para que possamos escrever um ';' depois
+// da utilização do macro.
 
 // Verifica se uma determinada expressão é um erro. Se for, imprime o erro e
 // pula para o label `teardown`.
 #define CSV_ASSERT(expr)          \
     do {                          \
         if (CSV_IS_ERROR(expr)) { \
-            print_error(&csv);    \
+            print_error(csv);     \
             goto teardown;        \
         }                         \
     } while (0)
 
 // Verifica se um determinado valor é diferente de 0. Se for, vai diretamente
 // para o label `teardown`.
-#define ASSERT_OR(expr, msg, ...)              \
-    do {                                       \
-        if ((expr) != 0) {                     \
-            fprintf(stderr, msg, __VA_ARGS__); \
-            goto teardown;                     \
-        }                                      \
+#define ASSERT_OR(expr, ...)              \
+    do {                                  \
+        if ((expr) != 0) {                \
+            fprintf(stderr, __VA_ARGS__); \
+            goto teardown;                \
+        }                                 \
     } while (0)
 
-bool vehicle_csv_to_bin(const char *csv_fname, const char *bin_fname) {
-    CSV csv = configure_vehicle_csv();
-
+// Converte um csv para um arquivo binário de registros. A leitura do csv é
+// controlada por `csv` e a escrita no binário é controlada por `iter`. O
+// argumento `iter` tem que ser `vehicle_from_stdin_append_to_bin` ou
+// `bus_line_row_iterator`, por conta dessa restrição essa não é uma função
+// completamente genérica. De forma mais geral, `iter` pode ser qualquer função
+// se encaixe nas restrições de `InterFunc` e receba como terceiro argumento um
+// ponteiro do tipo `IterArgs`.
+//
+// Essa função assume que o csv possui um header ainda por ser lido. Além disso,
+// os nomes das colunas são escritos em ordem e sem delimitador logo após o meta
+// header no arquivo binário. Ou seja, o leitor do arquivo binário gerado tem
+// que saber de antemão o tamanho do nome de cada coluna.
+static bool csv_to_bin(
+    CSV *csv,
+    const char *bin_fname,
+    IterFunc *iter,
+    const char *sep
+) {
     CSVResult res = CSV_OK;
 
     FILE *fp = fopen(bin_fname, "w");
@@ -251,82 +293,7 @@ bool vehicle_csv_to_bin(const char *csv_fname, const char *bin_fname) {
         return false;
     }
 
-    CSV_ASSERT(res = csv_open(&csv, csv_fname));
-    CSV_ASSERT(res = csv_parse_header(&csv, ","));
-
-    // Primeira escrita, escreve o byte de status para garantir que outros
-    // processos tentando ler o arquivo não leiam algo incompleto.
-    ASSERT_OR(
-        res = !update_header_status('0', fp),
-        "Error: could not write status to file %s.\n",
-        bin_fname
-    );
-
-    // Pula o header. Como nem todas as informações são conhecidas nesse
-    // momento, primeiro processamos as linhas e depois voltamos para escrever o
-    // header.
-    fseek(fp, VEHICLE_HEADER_SIZE, SEEK_SET);
-
-    // Configura os argumentos do iterador. Esses valores serão modificados para
-    // conter alguns dados que só podem ser contados lendo todos os registros.
-    IterArgs args = {
-        .fp                = fp,
-        .reg_count         = 0,
-        .removed_reg_count = 0,
-    };
-
-    // Itera por todas as linhas do csv e escreve os registros no binário.
-    CSV_ASSERT(res = csv_iterate_rows(&csv, ",", (const IterFunc *)vehicle_row_iterator, &args));
-
-    DBMeta meta = {
-        .status          = '1',
-        .byteProxReg     = ftell(fp),
-        .nroRegistros    = args.reg_count,
-        .nroRegRemovidos = args.removed_reg_count,
-    };
-
-    DBVehicleHeader header = { .meta = meta };
-
-    // Voltamos ao começo do arquivo para escrever as últimas coisas antes de
-    // finalizar o processamento.
-    fseek(fp, 0L, SEEK_SET);
-
-    memcpy(&header.descrevePrefixo  , csv_get_col_name(&csv, 0), sizeof(header.descrevePrefixo));
-    memcpy(&header.descreveData     , csv_get_col_name(&csv, 1), sizeof(header.descreveData));
-    memcpy(&header.descreveLugares  , csv_get_col_name(&csv, 2), sizeof(header.descreveLugares));
-    memcpy(&header.descreveLinhas   , csv_get_col_name(&csv, 3), sizeof(header.descreveLinhas));
-    memcpy(&header.descreveModelo   , csv_get_col_name(&csv, 4), sizeof(header.descreveModelo));
-    memcpy(&header.descreveCategoria, csv_get_col_name(&csv, 5), sizeof(header.descreveCategoria));
-
-    ASSERT_OR(
-        res = !write_vehicles_header(header, fp),
-        "Error: could not write vehicle header to %s.\n",
-        bin_fname
-    );
-
-teardown:
-    // Libera os valores abertos/alocados.
-    fclose(fp);
-    csv_drop(csv);
-
-    // Nesse momento, `res = 0` somente se não houve erro. Mas nesse caso
-    // queremos retornar `true`.
-    return !res;
-}
-
-bool bus_line_csv_to_bin(const char *csv_fname, const char *bin_fname) {
-    CSV csv = configure_bus_line_csv();
-    CSVResult res = CSV_OK;
-
-    FILE *fp = fopen(bin_fname, "w");
-
-    if (!fp) {
-        fprintf(stderr, "Error: Could not open file.\n");
-        return false;
-    }
-
-    CSV_ASSERT(res = csv_open(&csv, csv_fname));
-    CSV_ASSERT(res = csv_parse_header(&csv, ","));
+    CSV_ASSERT(res = csv_parse_header(csv, sep));
 
     // Primeira escrita, escreve o byte de status para garantir que outros
     // processos tentando ler o arquivo não leiam algo incompleto.
@@ -336,10 +303,23 @@ bool bus_line_csv_to_bin(const char *csv_fname, const char *bin_fname) {
         bin_fname
     );
 
-    // Pula o header. Como nem todas as informações são conhecidas nesse
+    // Pula o meta header. Como nem todas as informações são conhecidas nesse
     // momento, primeiro processamos as linhas e depois voltamos para escrever o
     // header.
-    fseek(fp, BUS_LINE_HEADER_SIZE, SEEK_SET);
+    fseek(fp, META_SIZE, SEEK_SET);
+
+    // Escreve os nomes das colunas em sequência sem \0 e sem verificar tamanho.
+    // Portanto erros nesses nomes não serão detectados.
+    for (int i = 0; i < csv->n_columns; i++) {
+        const char *name = csv_get_col_name(csv, i);
+        size_t len = strlen(name);
+
+        ASSERT_OR(
+            res = !fwrite(name, len * sizeof(char), 1, fp),
+            "Error: could not write column name to file %s.",
+            bin_fname
+        );
+    }
 
     // Configura os argumentos do iterador. Esses valores serão modificados para
     // conter alguns dados que só podem ser contados lendo todos os registros.
@@ -350,10 +330,7 @@ bool bus_line_csv_to_bin(const char *csv_fname, const char *bin_fname) {
     };
 
     // Itera por todas as linhas do csv e escreve os registros no binário.
-    CSV_ASSERT(res = csv_iterate_rows(&csv, ",", (const IterFunc *)bus_line_row_iterator, &args));
-
-    printf("Reg count = %ld\n", args.reg_count);
-    printf("Removed reg count = %ld\n", args.removed_reg_count);
+    CSV_ASSERT(res = csv_iterate_rows(csv, sep, iter, &args));
 
     DBMeta meta = {
         .status          = '1',
@@ -362,30 +339,113 @@ bool bus_line_csv_to_bin(const char *csv_fname, const char *bin_fname) {
         .nroRegRemovidos = args.removed_reg_count,
     };
 
-    DBBusLineHeader header = { .meta = meta };
-
-    // Voltamos ao começo do arquivo para escrever as últimas coisas antes de
-    // finalizar o processamento.
-    fseek(fp, 0L, SEEK_SET);
-
-    memcpy(&header.descreveCodigo, csv_get_col_name(&csv, 0), sizeof(header.descreveCodigo));
-    memcpy(&header.descreveCartao, csv_get_col_name(&csv, 1), sizeof(header.descreveCartao));
-    memcpy(&header.descreveNome  , csv_get_col_name(&csv, 2), sizeof(header.descreveNome));
-    memcpy(&header.descreveCor   , csv_get_col_name(&csv, 3), sizeof(header.descreveCor));
-
+    // Volta e atualiza o meta header.
     ASSERT_OR(
-        res = !write_bus_lines_header(header, fp),
-        "Error: could not write bus lines header to file %s.",
+        res = !update_header_meta(meta, fp),
+        "Error: could not write the meta header to file %s.",
         bin_fname
     );
 
 teardown:
     // Libera os valores abertos/alocados.
     fclose(fp);
-    csv_drop(csv);
-
 
     // Nesse momento, `res = 0` somente se não houve erro. Mas nesse caso
     // queremos retornar `true`.
     return !res;
+}
+
+bool vehicle_csv_to_bin(const char *csv_fname, const char *bin_fname) {
+    CSV csv = configure_vehicle_csv();
+    csv_open(&csv, csv_fname);
+
+    bool res = csv_to_bin(&csv, bin_fname, (IterFunc *)vehicle_row_iterator, ",");
+
+    csv_drop(csv);
+    return res;
+}
+
+bool bus_line_csv_to_bin(const char *csv_fname, const char *bin_fname) {
+    CSV csv = configure_bus_line_csv();
+    csv_open(&csv, csv_fname);
+
+    bool res = csv_to_bin(&csv, bin_fname, (IterFunc *)bus_line_row_iterator, ",");
+
+    csv_drop(csv);
+    return res;
+}
+
+// Lê as linhas de um csv com campos separados por `sep` e escreve os registros
+// lidos no arquivo binário de nome `bin_fname`. A função `iter` tem que ser
+// `vehicle_row_iterator` ou `bus_line_row_iterator`.
+//
+// Considera que não há header no csv.
+static bool csv_append_to_bin(const char *bin_fname, CSV *csv, IterFunc *iter, const char *sep) {
+    FILE *fp = fopen(bin_fname, "r+b");
+
+    if (!fp) {
+        fprintf(stderr, "Error: Could not open file.\n");
+        return false;
+    }
+
+    CSVResult res = CSV_OK;
+    DBMeta meta;
+
+    ASSERT_OR(
+        res = !read_header_meta(&meta, fp),
+        "Error: could not read meta header from file '%s'.",
+        bin_fname
+    );
+
+    ASSERT_OR(
+        res = !update_header_status('0', fp),
+        "Error: could not write status to file '%s'.",
+        bin_fname
+    );
+
+    IterArgs args = {
+        .fp                = fp,
+        .reg_count         = 0,
+        .removed_reg_count = 0,
+    };
+
+    // Vai para o fim do arquivo para adicionar novos registros.
+    fseek(fp, 0L, SEEK_END);
+
+    CSV_ASSERT(res = csv_iterate_rows(csv, sep, (IterFunc *)iter, &args));
+
+    meta.status = '1';
+    meta.nroRegRemovidos += args.removed_reg_count;
+    meta.nroRegistros += args.reg_count;
+
+    ASSERT_OR(
+        res = !update_header_meta(meta, fp),
+        "Error: could not write meta header to file '%s'.",
+        bin_fname
+    );
+
+teardown:
+    fclose(fp);
+
+    return !res;
+}
+
+bool vehicle_from_stdin_append_to_bin(const char *bin_fname) {
+    CSV csv = configure_vehicle_csv();
+    csv_use_fp(&csv, stdin);
+
+    bool res = csv_append_to_bin(bin_fname, &csv, (IterFunc *)vehicle_row_iterator, " ");
+
+    csv_drop(csv);
+    return res;
+}
+
+bool bus_line_from_stdin_append_to_bin(const char *bin_fname) {
+    CSV csv = configure_bus_line_csv();
+    csv_use_fp(&csv, stdin);
+
+    bool res = csv_append_to_bin(bin_fname, &csv, (IterFunc *)bus_line_row_iterator, " ");
+
+    csv_drop(csv);
+    return res;
 }

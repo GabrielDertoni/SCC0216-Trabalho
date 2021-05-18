@@ -5,10 +5,11 @@
 #include <string.h>
 
 #include <common.h>
+#include <bin.h>
 
 // Macro que verifica se alguma expressão é igual a 1. Se ela não é, retorna
 // `false` da função.
-#define WASSERT(expr) if ((expr) != 1) return false
+#define ASSERT(expr) if ((expr) != 1) return false
 
 // Se assegura de que o ponteiro de arquivo está num determinado offset.
 static inline void position(FILE *fp, size_t off) {
@@ -18,44 +19,38 @@ static inline void position(FILE *fp, size_t off) {
 
 bool update_header_status(char new_val, FILE *fp) {
     position(fp, 0);
-    WASSERT(fwrite(&new_val, sizeof(new_val), 1, fp));
-    return true;
-}
-
-bool update_header_byte_next_reg(uint64_t byte_next_reg, FILE *fp) {
-    position(fp, 1);
-    WASSERT(fwrite(&byte_next_reg, sizeof(byte_next_reg), 1, fp));
-    return true;
-}
-
-bool update_header_n_reg(uint32_t n_reg, FILE *fp) {
-    position(fp, 9);
-    WASSERT(fwrite(&n_reg, sizeof(n_reg), 1, fp));
+    ASSERT(fwrite(&new_val, sizeof(new_val), 1, fp));
     return true;
 }
 
 bool update_header_n_reg_removed(uint32_t n_reg_removed, FILE *fp) {
     position(fp, 13);
-    WASSERT(fwrite(&n_reg_removed, sizeof(n_reg_removed), 1, fp));
+    ASSERT(fwrite(&n_reg_removed, sizeof(n_reg_removed), 1, fp));
+    return true;
+}
+
+bool update_header_meta(DBMeta meta, FILE *fp) {
+    position(fp, 0);
+    ASSERT(write_header_meta(meta, fp));
     return true;
 }
 
 bool write_header_meta(DBMeta meta, FILE *fp) {
-    WASSERT(fwrite(&meta.status           , sizeof(meta.status)         , 1, fp));
-    WASSERT(fwrite(&meta.byteProxReg      , sizeof(meta.byteProxReg)    , 1, fp));
-    WASSERT(fwrite(&meta.nroRegistros     , sizeof(meta.nroRegistros)   , 1, fp));
-    WASSERT(fwrite(&meta.nroRegRemovidos  , sizeof(meta.nroRegRemovidos), 1, fp));
+    ASSERT(fwrite(&meta.status           , sizeof(meta.status)         , 1, fp));
+    ASSERT(fwrite(&meta.byteProxReg      , sizeof(meta.byteProxReg)    , 1, fp));
+    ASSERT(fwrite(&meta.nroRegistros     , sizeof(meta.nroRegistros)   , 1, fp));
+    ASSERT(fwrite(&meta.nroRegRemovidos  , sizeof(meta.nroRegRemovidos), 1, fp));
     return true;
 }
 
 bool write_vehicles_header(DBVehicleHeader header, FILE *fp) {
-    WASSERT(write_header_meta(header.meta, fp));
-    WASSERT(fwrite(&header.descrevePrefixo  , sizeof(header.descrevePrefixo)  , 1, fp));
-    WASSERT(fwrite(&header.descreveData     , sizeof(header.descreveData)     , 1, fp));
-    WASSERT(fwrite(&header.descreveLugares  , sizeof(header.descreveLugares)  , 1, fp));
-    WASSERT(fwrite(&header.descreveLinhas   , sizeof(header.descreveLinhas)   , 1, fp));
-    WASSERT(fwrite(&header.descreveModelo   , sizeof(header.descreveModelo)   , 1, fp));
-    WASSERT(fwrite(&header.descreveCategoria, sizeof(header.descreveCategoria), 1, fp));
+    ASSERT(write_header_meta(header.meta, fp));
+    ASSERT(fwrite(&header.descrevePrefixo  , sizeof(header.descrevePrefixo)  , 1, fp));
+    ASSERT(fwrite(&header.descreveData     , sizeof(header.descreveData)     , 1, fp));
+    ASSERT(fwrite(&header.descreveLugares  , sizeof(header.descreveLugares)  , 1, fp));
+    ASSERT(fwrite(&header.descreveLinhas   , sizeof(header.descreveLinhas)   , 1, fp));
+    ASSERT(fwrite(&header.descreveModelo   , sizeof(header.descreveModelo)   , 1, fp));
+    ASSERT(fwrite(&header.descreveCategoria, sizeof(header.descreveCategoria), 1, fp));
     return true;
 }
 
@@ -85,33 +80,33 @@ bool write_vehicle(const Vehicle *vehicle, FILE *fp) {
     tamanhoRegistro += sizeof(tamanhoCategoria);
     tamanhoRegistro += tamanhoCategoria;
 
-    WASSERT(fwrite(&removido                  , sizeof(removido)                  , 1, fp));
-    WASSERT(fwrite(&tamanhoRegistro           , sizeof(tamanhoRegistro)           , 1, fp));
-    WASSERT(fwrite(prefixo                    , sizeof(vehicle->prefixo)          , 1, fp));
-    WASSERT(fwrite(vehicle->data              , sizeof(vehicle->data)             , 1, fp));
-    WASSERT(fwrite(&vehicle->quantidadeLugares, sizeof(vehicle->quantidadeLugares), 1, fp));
-    WASSERT(fwrite(&vehicle->codLinha         , sizeof(vehicle->codLinha)         , 1, fp));
-    WASSERT(fwrite(&tamanhoModelo             , sizeof(tamanhoModelo)             , 1, fp));
+    ASSERT(fwrite(&removido                  , sizeof(removido)                  , 1, fp));
+    ASSERT(fwrite(&tamanhoRegistro           , sizeof(tamanhoRegistro)           , 1, fp));
+    ASSERT(fwrite(prefixo                    , sizeof(vehicle->prefixo)          , 1, fp));
+    ASSERT(fwrite(vehicle->data              , sizeof(vehicle->data)             , 1, fp));
+    ASSERT(fwrite(&vehicle->quantidadeLugares, sizeof(vehicle->quantidadeLugares), 1, fp));
+    ASSERT(fwrite(&vehicle->codLinha         , sizeof(vehicle->codLinha)         , 1, fp));
+    ASSERT(fwrite(&tamanhoModelo             , sizeof(tamanhoModelo)             , 1, fp));
 
     if (tamanhoModelo > 0) {
-        WASSERT(fwrite(vehicle->modelo        , tamanhoModelo * sizeof(char)      , 1, fp));
+        ASSERT(fwrite(vehicle->modelo        , tamanhoModelo * sizeof(char)      , 1, fp));
     }
 
-    WASSERT(fwrite(&tamanhoCategoria          , sizeof(tamanhoCategoria)          , 1, fp));
+    ASSERT(fwrite(&tamanhoCategoria          , sizeof(tamanhoCategoria)          , 1, fp));
 
     if (tamanhoCategoria > 0) {
-        WASSERT(fwrite(vehicle->categoria     , tamanhoCategoria * sizeof(char)   , 1, fp));
+        ASSERT(fwrite(vehicle->categoria     , tamanhoCategoria * sizeof(char)   , 1, fp));
     }
 
     return true;
 }
 
 bool write_bus_lines_header(DBBusLineHeader header, FILE *fp) {
-    WASSERT(write_header_meta(header.meta, fp));
-    WASSERT(fwrite(&header.descreveCodigo, sizeof(header.descreveCodigo), 1, fp));
-    WASSERT(fwrite(&header.descreveCartao, sizeof(header.descreveCartao), 1, fp));
-    WASSERT(fwrite(&header.descreveNome  , sizeof(header.descreveNome  ), 1, fp));
-    WASSERT(fwrite(&header.descreveCor   , sizeof(header.descreveCor   ), 1, fp));
+    ASSERT(write_header_meta(header.meta, fp));
+    ASSERT(fwrite(&header.descreveCodigo, sizeof(header.descreveCodigo), 1, fp));
+    ASSERT(fwrite(&header.descreveCartao, sizeof(header.descreveCartao), 1, fp));
+    ASSERT(fwrite(&header.descreveNome  , sizeof(header.descreveNome  ), 1, fp));
+    ASSERT(fwrite(&header.descreveCor   , sizeof(header.descreveCor   ), 1, fp));
     return true;
 }
 
@@ -137,20 +132,35 @@ bool write_bus_line(const BusLine *line, FILE *fp) {
     tamanhoRegistro += sizeof(tamanhoCor);
     tamanhoRegistro += tamanhoCor;
 
-    WASSERT(fwrite(&removido          , sizeof(removido)          , 1, fp));
-    WASSERT(fwrite(&tamanhoRegistro   , sizeof(tamanhoRegistro)   , 1, fp));
-    WASSERT(fwrite(&codLinha          , sizeof(codLinha)          , 1, fp));
-    WASSERT(fwrite(&line->aceitaCartao, sizeof(line->aceitaCartao), 1, fp));
-    WASSERT(fwrite(&tamanhoNome       , sizeof(tamanhoNome)       , 1, fp));
+    ASSERT(fwrite(&removido          , sizeof(removido)          , 1, fp));
+    ASSERT(fwrite(&tamanhoRegistro   , sizeof(tamanhoRegistro)   , 1, fp));
+    ASSERT(fwrite(&codLinha          , sizeof(codLinha)          , 1, fp));
+    ASSERT(fwrite(&line->aceitaCartao, sizeof(line->aceitaCartao), 1, fp));
+    ASSERT(fwrite(&tamanhoNome       , sizeof(tamanhoNome)       , 1, fp));
 
     if (tamanhoNome > 0) {
-        WASSERT(fwrite(line->nomeLinha, tamanhoNome * sizeof(char), 1, fp));
+        ASSERT(fwrite(line->nomeLinha, tamanhoNome * sizeof(char), 1, fp));
     }
 
-    WASSERT(fwrite(&tamanhoCor        , sizeof(tamanhoCor)        , 1, fp));
+    ASSERT(fwrite(&tamanhoCor        , sizeof(tamanhoCor)        , 1, fp));
 
     if (tamanhoCor > 0) {
-        WASSERT(fwrite(line->corLinha , tamanhoCor * sizeof(char) , 1, fp));
+        ASSERT(fwrite(line->corLinha , tamanhoCor * sizeof(char) , 1, fp));
     }
+    return true;
+}
+
+bool read_header_meta(DBMeta *meta, FILE *fp) {
+    position(fp, 0);
+
+    ASSERT(fread(&meta->status         , sizeof(meta->status)         , 1, fp));
+
+    if (meta->status == '0') {
+        return false;
+    }
+
+    ASSERT(fread(&meta->byteProxReg    , sizeof(meta->byteProxReg)    , 1, fp));
+    ASSERT(fread(&meta->nroRegistros   , sizeof(meta->nroRegistros)   , 1, fp));
+    ASSERT(fread(&meta->nroRegRemovidos, sizeof(meta->nroRegRemovidos), 1, fp));
     return true;
 }

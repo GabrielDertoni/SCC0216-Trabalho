@@ -22,7 +22,7 @@ typedef struct {
 
 typedef struct {
     char codLinha[32];
-    char aceitaCartao;
+    char aceitaCartao[1];
     char *nomeLinha;
     char *corLinha;
 } BusLine;

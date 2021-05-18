@@ -10,13 +10,6 @@
 #include <external.h>
 
 int main(int argc, char *argv[]) {
-    vehicle_csv_to_bin("data/veiculo.csv", "veiculo.bin");
-    bus_line_csv_to_bin("data/linha.csv", "linha.bin");
-
-    printf("veiculo.bin: ");
-    binarioNaTela("veiculo.bin");
-
-    printf("linha.bin: ");
-    binarioNaTela("linha.bin");
+    vehicle_csv_to_bin("Casos de Teste/veiculo1.csv", "veiculo1.bin");
     return 0;
 }

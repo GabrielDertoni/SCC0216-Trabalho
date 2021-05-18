@@ -41,8 +41,8 @@
  * ser usada juntamente com `csv_dynamic_field`, caso contrário ela deverá ser
  * usada juntamente com `csv_static_field`.
  */
-#define csv_dynamic_field(parse) (const ParseFunc *)parse, (const DropFunc *)free
-#define csv_static_field(parse)  (const ParseFunc *)parse, (const DropFunc *)NULL
+#define csv_dynamic_field(parse) (ParseFunc *)parse, (DropFunc *)free
+#define csv_static_field(parse)  (ParseFunc *)parse, (DropFunc *)NULL
 
 // Expande no macro `csv_column`.
 #define _csv_column(strct, member, parse, drop) \
@@ -61,11 +61,11 @@
 #define CSV_IS_ERROR(res) (res != 0)
 
 typedef enum {
-    CSV_OK = 0,
+    CSV_OK        = 0,
+    CSV_ERR_OTHER = 1,
     CSV_ERR_FILE,
     CSV_ERR_PARSE,
     CSV_ERR_EOF,
-    CSV_ERR_OTHER,
 } CSVResult;
 
 typedef struct Column Column;
@@ -92,8 +92,8 @@ struct Column {
     size_t size;
     size_t offset;
     char *name;
-    const ParseFunc *parse;
-    const DropFunc *drop;
+    ParseFunc *parse;
+    DropFunc *drop;
 }; 
 
 /**
@@ -142,6 +142,17 @@ void csv_error(CSV *csv, const char *format, ...);
 void csv_error_curr(CSV *csv, const char *format, ...);
 
 /**
+ * Usa um ponteiro de arquivo já aberto. Assume que o ponteiro de arquivo tem
+ * permissão de leitura. Em caso de erro, seta a mensagem de erro do `csv` com
+ * um erro apropriado.
+ *
+ * @param csv - o tipo que usará o ponteiro de arquivo.
+ * @param fp - o ponteiro de arquivo para uso.
+ * @return `CSV_OK` caso haja sucesso e `CSV_ERR_FILE` em caso de erro.
+ */
+CSVResult csv_use_fp(CSV *csv, FILE *fp);
+
+/**
  * Abre um arquivo .csv e registra num tipo `CSV`. O arquivo será aberto em
  * forma de leitura. Em caso de erro, seta a mensagem de erro do `csv` com um
  * erro apropriado.
@@ -173,7 +184,7 @@ CSVResult csv_close(CSV *csv);
  *         o retorno de todas as execuções de `iter` tenham resultado em sucesso.
  *         Em caso de erro, retorna um erro apropriado.
  */
-CSVResult csv_iterate_rows(CSV *csv, const char *sep, const IterFunc *iter, void *arg);
+CSVResult csv_iterate_rows(CSV *csv, const char *sep, IterFunc *iter, void *arg);
 
 /**
  * Lê uma linha do .csv e escreve o resultado em `strct`. Assume que haja um
@@ -311,13 +322,7 @@ int csv_get_field_index(const CSV *csv, const char *field_name);
  * @param drop - função que libera o tipo lido por `parse`.
  * @return uma nova coluna.
  */
-Column csv_column_new(
-    size_t size,
-    size_t offset,
-    const char *name,
-    const ParseFunc *parse,
-    const DropFunc *drop
-);
+Column csv_column_new(size_t size, size_t offset, const char *name, ParseFunc *parse, DropFunc *drop);
 
 /* Outros */
 
