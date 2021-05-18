@@ -2,3 +2,5 @@
 target/
 **.bin
 Casos de Teste/
+compile_flags.txt
+src/maybe_useless.c
