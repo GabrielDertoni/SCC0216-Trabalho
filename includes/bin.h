@@ -42,7 +42,10 @@ bool write_bus_lines_header(DBBusLineHeader header, FILE *fp);
 // Escreve um registro de linha de ônibus no arquivo.
 bool write_bus_line(const BusLine *line, FILE *fp);
 
-// Lê um cabeçalho meta do arquivo.
-bool read_header_meta(DBMeta *meta, FILE *fp);
+
+bool read_meta(FILE *fp, DBMeta *meta);
+
+bool SELECT_FROM_WHERE_FILE(char *from_file, char *where_campo, char *where_valor);
+bool SELECT_FROM_WHERE_LINE(char *from_file, char *where_campo, char *where_valor);
 
 #endif

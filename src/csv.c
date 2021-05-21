@@ -8,6 +8,7 @@
 
 #include <csv.h>
 #include <utils.h>
+#include<common.h>
 
 // Macro that asserts that a certain expression evaluates to `CSV_OK`. In case
 // it does not, return the resulting value from the surrounding function.
@@ -252,14 +253,16 @@ CSVResult csv_use_fp(CSV *csv, FILE *fp) {
 
 CSVResult csv_open(CSV *csv, const char *fname) {
     if (csv->fp) {
-        csv_error(csv, "can not open another file with same handler");
+        // csv_error(csv, "can not open another file with same handler");
+        csv_error(csv, ERROR_FOUND);
         return CSV_ERR_FILE;
     }
 
     FILE *fp = fopen(fname, "r");
 
     if (!fp) {
-        csv_error(csv, "could not open file %s", fname);
+        // csv_error(csv, "could not open file %s", fnameERR);
+        csv_error(csv, ERROR_FOUND);
         return CSV_ERR_FILE;
     }
 
@@ -271,7 +274,8 @@ CSVResult csv_open(CSV *csv, const char *fname) {
 
 CSVResult csv_close(CSV *csv) {
     if (!csv->fp) {
-        csv_error(csv, "tried to close csv with no file opened");
+        // csv_error(csv, "tried to close csv with no file opened");
+        csv_error(csv, ERROR_FOUND);
         return CSV_ERR_FILE;
     }
 
@@ -286,7 +290,8 @@ CSVResult csv_close(CSV *csv) {
 
 CSVResult csv_parse_header(CSV *csv, const char *sep) {
     if (!csv_is_open(csv)) {
-        csv_error(csv, "tried to read line in csv with no file opened");
+        // csv_error(csv, "tried to read line in csv with no file opened");
+        csv_error(csv, ERROR_FOUND);
         return CSV_ERR_FILE;
     }
 

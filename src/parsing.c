@@ -10,7 +10,8 @@
 
 // Imprime um erro do csv.
 void print_error(CSV *csv) {
-    fprintf(stderr, "Error: %s.\n", csv_get_error(csv));
+    // fprintf(stderr, "Error: %s.\n", csv_get_error(csv));
+    fprintf(stderr, ERROR_FOUND);
 }
 
 // Lê um número que caiba em 32 bits.
@@ -299,8 +300,9 @@ static bool csv_to_bin(
     // processos tentando ler o arquivo não leiam algo incompleto.
     ASSERT_OR(
         res = !update_header_status('0', fp),
-        "Error: could not write status to file %s.",
-        bin_fname
+        // "Error: could not write status to file %s.",
+        // bin_fname
+        ERROR_FOUND
     );
 
     // Pula o meta header. Como nem todas as informações são conhecidas nesse
@@ -316,8 +318,9 @@ static bool csv_to_bin(
 
         ASSERT_OR(
             res = !fwrite(name, len * sizeof(char), 1, fp),
-            "Error: could not write column name to file %s.",
-            bin_fname
+            // "Error: could not write column name to file %s.",
+            // bin_fname
+            ERROR_FOUND
         );
     }
 
@@ -342,8 +345,9 @@ static bool csv_to_bin(
     // Volta e atualiza o meta header.
     ASSERT_OR(
         res = !update_header_meta(meta, fp),
-        "Error: could not write the meta header to file %s.",
-        bin_fname
+        // "Error: could not write the meta header to file %s.",
+        // bin_fname
+        ERROR_FOUND
     );
 
 teardown:
@@ -355,7 +359,7 @@ teardown:
     return !res;
 }
 
-bool vehicle_csv_to_bin(const char *csv_fname, const char *bin_fname) {
+bool CREATE_TABLE_FILE(const char *csv_fname, const char *bin_fname) {
     CSV csv = configure_vehicle_csv();
     bool res = !csv_open(&csv, csv_fname);
 
@@ -369,7 +373,7 @@ bool vehicle_csv_to_bin(const char *csv_fname, const char *bin_fname) {
     return res;
 }
 
-bool bus_line_csv_to_bin(const char *csv_fname, const char *bin_fname) {
+bool CREATE_TABLE_LINE(const char *csv_fname, const char *bin_fname) {
     CSV csv = configure_bus_line_csv();
     bool res = !csv_open(&csv, csv_fname);
 
@@ -392,7 +396,7 @@ static bool csv_append_to_bin(const char *bin_fname, CSV *csv, IterFunc *iter, c
     FILE *fp = fopen(bin_fname, "r+b");
 
     if (!fp) {
-        fprintf(stderr, "Error: Could not open file.\n");
+        // fprintf(stderr, "Error: Could not open file.\n");
         return false;
     }
 
@@ -400,15 +404,18 @@ static bool csv_append_to_bin(const char *bin_fname, CSV *csv, IterFunc *iter, c
     DBMeta meta;
 
     ASSERT_OR(
-        res = !read_header_meta(&meta, fp),
-        "Error: could not read meta header from file '%s'.",
-        bin_fname
+        res = !read_meta(fp, &meta),
+        // "Error: could not read meta header from file '%s'.",
+        // bin_fname
+        ERROR_FOUND
     );
 
     ASSERT_OR(
         res = !update_header_status('0', fp),
-        "Error: could not write status to file '%s'.",
-        bin_fname
+        // "Error: could not write status to file '%s'.",
+        // bin_fname
+        ERROR_FOUND
+        
     );
 
     IterArgs args = {
@@ -438,7 +445,7 @@ teardown:
     return !res;
 }
 
-bool vehicle_from_stdin_append_to_bin(const char *bin_fname) {
+bool INSERT_INTO_FILE(const char *bin_fname) {
     CSV csv = configure_vehicle_csv();
     csv_use_fp(&csv, stdin);
 
@@ -448,7 +455,7 @@ bool vehicle_from_stdin_append_to_bin(const char *bin_fname) {
     return res;
 }
 
-bool bus_line_from_stdin_append_to_bin(const char *bin_fname) {
+bool INSERT_INTO_LINE(const char *bin_fname) {
     CSV csv = configure_bus_line_csv();
     csv_use_fp(&csv, stdin);
 

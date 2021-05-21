@@ -10,6 +10,7 @@
 
 #define NULL_VAL             "NULO"
 #define REMOVED_MARKER       '*'
+#define ERROR_FOUND          "Falha no processamento do arquivo.\n"
 
 typedef struct {
     char    prefixo[5];
@@ -52,7 +53,7 @@ typedef struct {
     char   descreveCor[24];
 } DBBusLineHeader;
 
-/*
+
 typedef struct {
     char      removido;
     uint32_t  tamanhoRegistro;
@@ -67,16 +68,16 @@ typedef struct {
 } DBVehicleRegister;
 
 typedef struct {
-    bool      removido;
+    char      removido;
     uint32_t  tamanhoRegistro;
     uint32_t  codLinha;
-    char      aceitaCartao[1];
+    char      aceitaCartao;
     uint32_t  tamanhoNome;
     char      *nomeLinha;
     uint32_t  tamanhoCor;
     char      *corLinha;
 } DBBusLineRegister;
-*/
+
 
 
 #endif
