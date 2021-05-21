@@ -10,6 +10,6 @@
 #include <external.h>
 
 int main(int argc, char *argv[]) {
-    vehicle_csv_to_bin("Casos de Teste/veiculo1.csv", "veiculo1.bin");
+    vehicle_csv_to_bin("data/veiculo.csv", "veiculo1.bin");
     return 0;
 }

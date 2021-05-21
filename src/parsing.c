@@ -357,9 +357,13 @@ teardown:
 
 bool vehicle_csv_to_bin(const char *csv_fname, const char *bin_fname) {
     CSV csv = configure_vehicle_csv();
-    csv_open(&csv, csv_fname);
+    bool res = !csv_open(&csv, csv_fname);
 
-    bool res = csv_to_bin(&csv, bin_fname, (IterFunc *)vehicle_row_iterator, ",");
+    if (res)
+        res = csv_to_bin(&csv, bin_fname, (IterFunc *)vehicle_row_iterator, ",");
+
+    if (!res)
+        print_error(&csv);
 
     csv_drop(csv);
     return res;
@@ -367,9 +371,13 @@ bool vehicle_csv_to_bin(const char *csv_fname, const char *bin_fname) {
 
 bool bus_line_csv_to_bin(const char *csv_fname, const char *bin_fname) {
     CSV csv = configure_bus_line_csv();
-    csv_open(&csv, csv_fname);
+    bool res = !csv_open(&csv, csv_fname);
 
-    bool res = csv_to_bin(&csv, bin_fname, (IterFunc *)bus_line_row_iterator, ",");
+    if (res)
+        res = csv_to_bin(&csv, bin_fname, (IterFunc *)bus_line_row_iterator, ",");
+
+    if (!res)
+        print_error(&csv);
 
     csv_drop(csv);
     return res;
