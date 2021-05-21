@@ -30,13 +30,13 @@ int main(void){
     switch (operacao) {
         case OP_CREATE_TABLE_VEHICLE:
             input1 = read_word(stdin);
-            if (CREATE_TABLE_FILE(file_name, input1))
+            if (vehicle_csv_to_bin(file_name, input1))
                 binarioNaTela(input1);
             break;
 
         case OP_CREATE_TABLE_BUS_LINE:
             input1 = read_word(stdin);
-            if (CREATE_TABLE_LINE(file_name, input1))
+            if (bus_line_csv_to_bin(file_name, input1))
 				binarioNaTela(input1);
             break; 
 
@@ -62,13 +62,13 @@ int main(void){
 
         case OP_INSERT_INTO_VEHICLE:
             input1 = read_word(stdin);
-            if(INSERT_INTO_FILE(file_name))
+            if(vehicle_append_to_bin_from_stdin(file_name))
                 binarioNaTela(file_name);
             break;
 
         case OP_INSERT_INTO_BUS_LINE:
             input1 = read_word(stdin);
-            if(INSERT_INTO_LINE(file_name))
+            if(bus_line_append_to_bin_from_stdin(file_name))
                 binarioNaTela(file_name);
             break;
     }
