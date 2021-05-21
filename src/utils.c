@@ -2,6 +2,14 @@
 #include <stdlib.h>
 #include <stdarg.h>
 
+#define QUOTE 34
+#define SPACE 32
+#define BREAK_LINE 10
+#define CARRIAGE_RETURN 13
+#define and &&
+
+#define BUFFER 256
+
 char *alloc_vsprintf(const char *format, va_list ap) {
     va_list ap_cpy;
     va_copy(ap_cpy, ap);
@@ -29,4 +37,25 @@ char *alloc_sprintf(const char *format, ...) {
 
     va_end(ap);
     return s;
+}
+
+char *read_word(FILE *in) {
+    char *string = NULL;
+	size_t len = 0;
+    int character;
+
+    do {
+        if(len % BUFFER == 0)
+            string = realloc(string, (len / BUFFER + 1) * BUFFER + 1);
+
+        character = fgetc(in);
+
+        if(character != CARRIAGE_RETURN and character != QUOTE)
+            string[len++] = character;
+
+    } while (character != SPACE and character != BREAK_LINE and character != EOF);
+
+    string[len-1] = '\0';
+    string = realloc(string, len);
+    return string;
 }
