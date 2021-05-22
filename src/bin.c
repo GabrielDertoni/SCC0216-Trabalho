@@ -300,7 +300,7 @@ bool read_bus_line_register(FILE *fp, DBBusLineRegister *reg){
     return true;
 }
 
-bool check_validate_file(DBVehicleRegister v, char *campo, char *valor){
+bool check_vehicle_field_equals(DBVehicleRegister v, char *campo, char *valor){
     if(strcmp(campo, "prefixo") == 0)
         return strstr(v.prefixo, valor) != NULL;
     else if(strcmp(campo, "data") == 0)
@@ -317,7 +317,7 @@ bool check_validate_file(DBVehicleRegister v, char *campo, char *valor){
     exit(0);
 }
 
-bool check_validate_line(DBBusLineRegister b, char *campo, char *valor){
+bool check_bus_line_field_equals(DBBusLineRegister b, char *campo, char *valor){
     if(strcmp(campo, "codLinha") == 0)
         return b.codLinha == atoi(valor);
     else if(strcmp(campo, "aceitaCartao") == 0)
@@ -355,7 +355,7 @@ bool SELECT_FROM_WHERE_FILE(char *from_file, char *where_campo, char *equals_to)
         while(fread(&reg.removido, 1, 1, fp) == 1){
             read_vehicle_register(fp, &reg);
             if(where_campo != NULL && equals_to != NULL)
-                print = check_validate_file(reg, where_campo, equals_to);
+                print = check_vehicle_field_equals(reg, where_campo, equals_to);
 
             if(reg.removido != '0' && print)
                 print_vehicle(stdout, reg);
@@ -384,7 +384,7 @@ bool SELECT_FROM_WHERE_LINE(char *from_file, char *where_field, char *equals_to)
         while(fread(&reg.removido, 1, 1, fp) == 1){
             read_bus_line_register(fp, &reg);
             if(where_field != NULL && equals_to != NULL)
-                print = check_validate_line(reg, where_field, equals_to);
+                print = check_bus_line_field_equals(reg, where_field, equals_to);
 
             if(reg.removido != '0' && print)
                 print_bus_line(stdout, reg);
