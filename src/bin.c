@@ -269,6 +269,7 @@ static void deallocate_bus_line_strings(DBBusLineRegister b){
 }
 
 bool read_vehicle_register(FILE *fp, DBVehicleRegister *reg) {
+    ASSERT(fread(&reg->removido, 1, 1, fp));
     ASSERT(fread(&reg->tamanhoRegistro, 4, 1, fp));
     ASSERT(fread(&reg->prefixo, 5, 1, fp));
     ASSERT(fread(&reg->data, 10, 1, fp));
@@ -286,6 +287,7 @@ bool read_vehicle_register(FILE *fp, DBVehicleRegister *reg) {
 }
 
 bool read_bus_line_register(FILE *fp, DBBusLineRegister *reg){
+    ASSERT(fread(&reg->removido, 1, 1, fp));
     ASSERT(fread(&reg->tamanhoRegistro, 4, 1, fp));
     ASSERT(fread(&reg->codLinha, 4, 1, fp));
     ASSERT(fread(&reg->aceitaCartao, 1, 1, fp));
@@ -352,8 +354,7 @@ bool SELECT_FROM_WHERE_FILE(const char *from_file, const char *where_campo, cons
     DBVehicleHeader header;
     if(read_header_vehicle(fp, &header)){
         DBVehicleRegister reg;
-        while(fread(&reg.removido, 1, 1, fp) == 1){
-            read_vehicle_register(fp, &reg);
+        while(read_vehicle_register(fp, &reg)){
             if(where_campo != NULL && equals_to != NULL)
                 print = check_vehicle_field_equals(&reg, where_campo, equals_to);
 
@@ -381,8 +382,7 @@ bool SELECT_FROM_WHERE_LINE(const char *from_file, const char *where_field, cons
     DBBusLineHeader header;
     if(read_header_bus_line(fp, &header)){
         DBBusLineRegister reg;
-        while(fread(&reg.removido, 1, 1, fp) == 1){
-            read_bus_line_register(fp, &reg);
+        while(read_bus_line_register(fp, &reg)){
             if(where_field != NULL && equals_to != NULL)
                 print = check_bus_line_field_equals(&reg, where_field, equals_to);
 
