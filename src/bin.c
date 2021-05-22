@@ -165,27 +165,17 @@ bool write_bus_line(const BusLine *line, FILE *fp) {
     return true;
 }
 
-// bool CREATE_TABLE_FILE(char *file_name_in, char *file_name_out){
-//     return vehicle_csv_to_bin(file_name_in);
-// }
-
-// bool CREATE_TABLE_LINE(char *file_name_in, char *file_name_out){
-
-// }
-
 bool read_meta(FILE *fp, DBMeta *meta){
     ASSERT(fread(&meta->status, 1, 1, fp));
-    if(meta->status == '0')
-        return false;
+    ASSERT(meta->status == '1');
     ASSERT(fread(&meta->byteProxReg, sizeof(long), 1, fp));
     ASSERT(fread(&meta->nroRegistros, sizeof(int), 1, fp));
     ASSERT(fread(&meta->nroRegRemovidos, sizeof(int), 1, fp));
     return true;
 }
 
-bool read_header_file(FILE *fp, DBVehicleHeader *header){
-    if(!read_meta(fp, &header->meta))
-        return false;
+bool read_header_vehicle(FILE *fp, DBVehicleHeader *header){
+    ASSERT(read_meta(fp, &header->meta));
     ASSERT(fread(&header->descrevePrefixo, 18, 1, fp));
     ASSERT(fread(&header->descreveData, 35, 1, fp));
     ASSERT(fread(&header->descreveLugares, 42, 1, fp));
@@ -195,8 +185,8 @@ bool read_header_file(FILE *fp, DBVehicleHeader *header){
     return true;
 }
 
-bool read_header_line(FILE *fp, DBBusLineHeader *header){
-    if(!read_meta(fp, &header->meta));
+bool read_header_bus_line(FILE *fp, DBBusLineHeader *header){
+    ASSERT(read_meta(fp, &header->meta));
     ASSERT(fread(&header->descreveCodigo, 15, 1, fp));
     ASSERT(fread(&header->descreveCartao, 13, 1, fp));
     ASSERT(fread(&header->descreveNome, 13, 1, fp));
@@ -204,40 +194,53 @@ bool read_header_line(FILE *fp, DBBusLineHeader *header){
     return true;
 }
 
-void print_result_file(FILE *out, DBVehicleRegister v){
+static void print_date(char date[10], FILE *out) {
+    const char *months[12] = { "janeiro", "fevereiro", "março", "abril", "maio",
+                               "junho", "julho", "agosto", "setembro", "outubro",
+                               "novembro", "dezembro" };
+    char *parse_ptr = date;
+    char *year = strsep(&parse_ptr, "-");
+    char *month = strsep(&parse_ptr, "-");
+    char *day = strsep(&parse_ptr, "-");
+    fprintf(out, "%s %.2s de %s de %s\n", DATE, day, months[atoi(month)-1], year);
+}
+
+void print_vehicle(FILE *out, DBVehicleRegister v){
     fprintf(out, "%s %.5s\n", PREFIX, v.prefixo);
+
     if(v.tamanhoModelo != 0)
         fprintf(out, "%s %s\n", MODEL, v.modelo);
     else
         fprintf(out, "%s %s\n", MODEL, NO_VALUE);
+
     if(v.tamanhoCategoria != 0)
         fprintf(out, "%s %s\n", CATEGORY, v.categoria);
     else
         fprintf(out, "%s %s\n", CATEGORY, NO_VALUE);
-    if(strlen(v.data) != 0){
-        char *months[12] = {"janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"};
-        char *year = strtok(v.data, "-"), *month = strtok(NULL, "-"), *day = strtok(NULL, "-");
-        fprintf(out, "%s %.2s de %s de %s\n", DATE, day, months[atoi(month)-1], year);
-    }
+
+    if(strlen(v.data) != 0)
+        print_date(v.data, out);
     else
         fprintf(out, "%s %s\n", DATE, NO_VALUE);
+
     if(v.quantidadeLugares != -1)
         fprintf(out, "%s %d\n\n", PLACES, v.quantidadeLugares);
     else
         fprintf(out, "%s %s\n\n", PLACES, NO_VALUE);
 }
 
-void print_result_line(FILE *out, DBBusLineRegister b){
+void print_bus_line(FILE *out, DBBusLineRegister b){
     fprintf(out, "%s %d\n", COD_LINHA, b.codLinha);
     if(b.tamanhoNome != 0)
         fprintf(out, "%s %s\n", NAME_LINE, b.nomeLinha);
     else
         fprintf(out, "%s %s\n", NAME_LINE, NO_VALUE);
-    // fprintf(out, "tamanho: %d\n", b.tamanhoCor);
+
     if(b.tamanhoCor != 0)
         fprintf(out, "%s %s\n", DESCRIBE_COLOR, b.corLinha);
     else
         fprintf(out, "%s %s\n", DESCRIBE_COLOR, NO_VALUE);
+
     fprintf(out, "%s ", ACCEPT);
     switch(b.aceitaCartao){
         case 'S':
@@ -255,51 +258,49 @@ void print_result_line(FILE *out, DBBusLineRegister b){
     }
 }
 
-void deallocate_file_strings(DBVehicleRegister v){
+static void deallocate_vehicle_strings(DBVehicleRegister v){
     free(v.categoria);
     free(v.modelo);
 }
 
-void deallocate_line_strings(DBBusLineRegister b){
+static void deallocate_bus_line_strings(DBBusLineRegister b){
     free(b.nomeLinha);
     free(b.corLinha);
 }
 
-DBVehicleRegister read_file_registers(FILE *fp, DBVehicleRegister v){
-    fread(&v.tamanhoRegistro, 4, 1, fp);
-    fread(&v.prefixo, 5, 1, fp);
-    fread(&v.data, 10, 1, fp);
-    fread(&v.quantidadeLugares, 4, 1, fp);
-    fread(&v.codLinha, 4, 1, fp);
-    fread(&v.tamanhoModelo, 4, 1, fp);
-    v.modelo = malloc(v.tamanhoModelo+1);
-    fread(v.modelo, v.tamanhoModelo, 1, fp);
-    v.modelo[v.tamanhoModelo] = 0;
-    fread(&v.tamanhoCategoria, 4, 1, fp);
-    v.categoria = malloc(v.tamanhoCategoria+1);
-    fread(v.categoria, v.tamanhoCategoria, 1, fp);
-    return v;
+bool read_vehicle_register(FILE *fp, DBVehicleRegister *reg) {
+    ASSERT(fread(&reg->tamanhoRegistro, 4, 1, fp));
+    ASSERT(fread(&reg->prefixo, 5, 1, fp));
+    ASSERT(fread(&reg->data, 10, 1, fp));
+    ASSERT(fread(&reg->quantidadeLugares, 4, 1, fp));
+    ASSERT(fread(&reg->codLinha, 4, 1, fp));
+    ASSERT(fread(&reg->tamanhoModelo, 4, 1, fp));
+    reg->modelo = malloc(reg->tamanhoModelo + 1);
+    ASSERT(fread(reg->modelo, reg->tamanhoModelo, 1, fp));
+    reg->modelo[reg->tamanhoModelo] = '\0';
+    ASSERT(fread(&reg->tamanhoCategoria, 4, 1, fp));
+    reg->categoria = malloc(reg->tamanhoCategoria + 1);
+    ASSERT(fread(reg->categoria, reg->tamanhoCategoria, 1, fp));
+    reg->categoria[reg->tamanhoCategoria] = '\0';
+    return true;
 }
 
-DBBusLineRegister read_line_register(FILE *fp, DBBusLineRegister b){
-    fread(&b.tamanhoRegistro, 4, 1, fp);
-    fread(&b.codLinha, 4, 1, fp);
-    fread(&b.aceitaCartao, 1, 1, fp);
-    fread(&b.tamanhoNome, 4, 1, fp);
-    b.nomeLinha = malloc(b.tamanhoNome+1);
-    fread(b.nomeLinha, b.tamanhoNome, 1, fp);
-    b.nomeLinha[b.tamanhoNome] = 0;
-    // printf("nome: %s\n", b.nomeLinha);
-    fread(&b.tamanhoCor, 4, 1, fp);
-    b.corLinha = malloc(b.tamanhoCor+1);
-    fread(b.corLinha, b.tamanhoCor, 1, fp);
-    b.corLinha[b.tamanhoCor] = 0;
-    return b;
+bool read_bus_line_register(FILE *fp, DBBusLineRegister *reg){
+    ASSERT(fread(&reg->tamanhoRegistro, 4, 1, fp));
+    ASSERT(fread(&reg->codLinha, 4, 1, fp));
+    ASSERT(fread(&reg->aceitaCartao, 1, 1, fp));
+    ASSERT(fread(&reg->tamanhoNome, 4, 1, fp));
+    reg->nomeLinha = malloc(reg->tamanhoNome + 1);
+    ASSERT(fread(reg->nomeLinha, reg->tamanhoNome, 1, fp));
+    reg->nomeLinha[reg->tamanhoNome] = '\0';
+    ASSERT(fread(&reg->tamanhoCor, 4, 1, fp));
+    reg->corLinha = malloc(reg->tamanhoCor + 1);
+    ASSERT(fread(reg->corLinha, reg->tamanhoCor, 1, fp));
+    reg->corLinha[reg->tamanhoCor] = '\0';
+    return true;
 }
 
 bool check_validate_file(DBVehicleRegister v, char *campo, char *valor){
-    // scan_quote_string(valor);
-    // printf("comp: %d\n", strcmp(campo, "prefixo"));
     if(strcmp(campo, "prefixo") == 0)
         return strstr(v.prefixo, valor) != NULL;
     else if(strcmp(campo, "data") == 0)
@@ -310,8 +311,10 @@ bool check_validate_file(DBVehicleRegister v, char *campo, char *valor){
         return strcmp(valor, v.modelo) == 0;
     else if(strcmp(campo, "categoria") == 0)
         return strcmp(valor, v.categoria) == 0;
-    else
-        return false; // Sei lá (???)
+
+    // Nunca deveria acontecer
+    fprintf(stderr, "Erro: Invalid field.");
+    exit(0);
 }
 
 bool check_validate_line(DBBusLineRegister b, char *campo, char *valor){
@@ -323,8 +326,10 @@ bool check_validate_line(DBBusLineRegister b, char *campo, char *valor){
         return strcmp(valor, b.nomeLinha) == 0;
     else if(strcmp(campo, "corLinha") == 0)
         return strcmp(valor, b.corLinha) == 0;
-    else
-        return false; // Sei lá (???)
+
+    // Nunca deveria acontecer
+    fprintf(stderr, "Erro: Invalid field.");
+    exit(0);
 }
 
 bool check_file(FILE *fp){
@@ -338,59 +343,60 @@ bool check_file(FILE *fp){
     }
 }
 
-bool SELECT_FROM_WHERE_FILE(char *from_file, char *where_campo, char *where_valor){
+bool SELECT_FROM_WHERE_FILE(char *from_file, char *where_campo, char *equals_to){
     FILE *fp = fopen(from_file, "rb");
-    if(check_file(fp)){
-        bool print = (where_campo == NULL);
-        DBVehicleHeader header;
-        if(read_header_file(fp, &header)){
-            DBVehicleRegister v;
-            while(fread(&v.removido, 1, 1, fp) == 1){
-                v = read_file_registers(fp, v);
-                if(where_campo != NULL && where_valor != NULL)
-                    print = check_validate_file(v, where_campo, where_valor);
-                if(v.removido != '0' && print)
-                    print_result_file(stdout, v);
-                deallocate_file_strings(v);
-            }
-            fclose(fp);
-            return true;
+
+    if (!check_file(fp)) return false;
+
+    bool print = (where_campo == NULL);
+    DBVehicleHeader header;
+    if(read_header_vehicle(fp, &header)){
+        DBVehicleRegister reg;
+        while(fread(&reg.removido, 1, 1, fp) == 1){
+            read_vehicle_register(fp, &reg);
+            if(where_campo != NULL && equals_to != NULL)
+                print = check_validate_file(reg, where_campo, equals_to);
+
+            if(reg.removido != '0' && print)
+                print_vehicle(stdout, reg);
+
+            deallocate_vehicle_strings(reg);
         }
-        else{
-            printf("%s", NO_REGISTER);
-            fclose(fp);
-            return false;
-        }
+        fclose(fp);
+        return true;
     }
-    return false;
+    else{
+        printf("%s", NO_REGISTER);
+        fclose(fp);
+        return false;
+    }
 }
 
-bool SELECT_FROM_WHERE_LINE(char *from_file, char *where_campo, char *where_valor){
+bool SELECT_FROM_WHERE_LINE(char *from_file, char *where_field, char *equals_to){
     FILE *fp = fopen(from_file, "rb");
-    if(check_file(fp)){
-        bool print = (where_campo == NULL);
-        DBBusLineHeader header;
-        if(read_header_line(fp, &header)){
-            DBBusLineRegister b;
-            while(fread(&b.removido, 1, 1, fp) == 1){
-                b = read_line_register(fp, b);
-                if(where_campo != NULL && where_valor != NULL)
-                    print = check_validate_line(b, where_campo, where_valor);
-                // printf("removido: %c print: %d\n", b.removido, print);
-                if(b.removido != '0' && print){
-                    print_result_line(stdout, b);
-                }
-                deallocate_line_strings(b);
-            }
-            fclose(fp);
-            return true;
-        }
-        else{
-            fprintf(stderr, "%s", ERROR_FOUND);
-            fclose(fp);
-            return false;
-        }
 
+    if(!check_file(fp)) return false;
+
+    bool print = (where_field == NULL);
+    DBBusLineHeader header;
+    if(read_header_bus_line(fp, &header)){
+        DBBusLineRegister reg;
+        while(fread(&reg.removido, 1, 1, fp) == 1){
+            read_bus_line_register(fp, &reg);
+            if(where_field != NULL && equals_to != NULL)
+                print = check_validate_line(reg, where_field, equals_to);
+
+            if(reg.removido != '0' && print)
+                print_bus_line(stdout, reg);
+
+            deallocate_bus_line_strings(reg);
+        }
+        fclose(fp);
+        return true;
     }
-    return false;
+    else{
+        fprintf(stderr, "%s", ERROR_FOUND);
+        fclose(fp);
+        return false;
+    }
 }
