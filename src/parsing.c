@@ -430,6 +430,7 @@ static bool csv_append_to_bin(const char *bin_fname, CSV *csv, IterFunc *iter, c
     CSV_ASSERT(res = csv_iterate_rows(csv, sep, (IterFunc *)iter, &args));
 
     meta.status = '1';
+    meta.byteProxReg = ftell(fp);
     meta.nroRegRemovidos += args.removed_reg_count;
     meta.nroRegistros += args.reg_count;
 

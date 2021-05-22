@@ -32,22 +32,20 @@ CSVResult bus_line_row_iterator(CSV *csv, const BusLine *bus_line, IterArgs *arg
 
 // Converte um csv de veículos para um binário contendo os registros. Retorna
 // `true` caso a operação tenha sido bem sucedida e `false` caso contrário.
-// bool vehicle_csv_to_bin(const char *csv_fname, const char *bin_fname);
-bool CREATE_TABLE_FILE(const char *csv_fname, const char *bin_fname);
+bool vehicle_csv_to_bin(const char *csv_fname, const char *bin_fname);
 
 // Converte um csv de linhas de ônibus para um binário contendo os registros.
 // Retorna `true` caso a operação tenha sido bem sucedida e `false` caso
 // contrário.
-// bool bus_line_csv_to_bin(const char *csv_fname, const char *bin_fname);
-bool CREATE_TABLE_LINE(const char *csv_fname, const char *bin_fname);
+bool bus_line_csv_to_bin(const char *csv_fname, const char *bin_fname);
 
 
 // Lê da entrada padrão vários registros de veículos e escreve esses registros
 // no arquivo `bin_fname`.
-bool INSERT_INTO_FILE(const char *bin_fname);
+bool vehicle_append_to_bin_from_stdin(const char *bin_fname);
 
 // Lê da entrada padrão vários registros de linhas de ônibus e escreve esses
 // registros no arquivo `bin_fname`.
-bool INSERT_INTO_LINE(const char *bin_fname);
+bool bus_line_append_to_bin_from_stdin(const char *bin_fname);
 
 #endif
