@@ -11,14 +11,14 @@
 #include <external.h>
 
 typedef enum {
-	OP_CREATE_TABLE_VEHICLE       = 1,
-	OP_CREATE_TABLE_BUS_LINE      = 2,
-	OP_SELECT_FROM_VEHICLE        = 3,
-	OP_SELECT_FROM_BUS_LINE       = 4,
-	OP_SELECT_FROM_VEHICLE_WHERE  = 5,
-	OP_SELECT_FROM_BUS_LINE_WHERE = 6,
-	OP_INSERT_INTO_VEHICLE        = 7,
-	OP_INSERT_INTO_BUS_LINE       = 8,
+    OP_CREATE_TABLE_VEHICLE       = 1,
+    OP_CREATE_TABLE_BUS_LINE      = 2,
+    OP_SELECT_FROM_VEHICLE        = 3,
+    OP_SELECT_FROM_BUS_LINE       = 4,
+    OP_SELECT_FROM_VEHICLE_WHERE  = 5,
+    OP_SELECT_FROM_BUS_LINE_WHERE = 6,
+    OP_INSERT_INTO_VEHICLE        = 7,
+    OP_INSERT_INTO_BUS_LINE       = 8,
 } Op;
 
 int main(void){
@@ -37,7 +37,7 @@ int main(void){
         case OP_CREATE_TABLE_BUS_LINE:
             input1 = read_word(stdin);
             if (bus_line_csv_to_bin(file_name, input1))
-				binarioNaTela(input1);
+                binarioNaTela(input1);
             break; 
 
         case OP_SELECT_FROM_VEHICLE:

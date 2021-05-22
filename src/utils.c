@@ -41,7 +41,7 @@ char *alloc_sprintf(const char *format, ...) {
 
 char *read_word(FILE *in) {
     char *string = NULL;
-	size_t len = 0;
+    size_t len = 0;
     int character;
 
     do {

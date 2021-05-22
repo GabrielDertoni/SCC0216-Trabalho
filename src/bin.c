@@ -38,12 +38,6 @@ bool update_header_status(char new_val, FILE *fp) {
     return true;
 }
 
-bool update_header_n_reg_removed(uint32_t n_reg_removed, FILE *fp) {
-    position(fp, 13);
-    ASSERT(fwrite(&n_reg_removed, sizeof(n_reg_removed), 1, fp));
-    return true;
-}
-
 bool update_header_meta(DBMeta meta, FILE *fp) {
     position(fp, 0);
     ASSERT(write_header_meta(meta, fp));

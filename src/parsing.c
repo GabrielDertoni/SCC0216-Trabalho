@@ -212,7 +212,6 @@ CSVResult vehicle_row_iterator(CSV *csv, const Vehicle *vehicle, IterArgs *args)
         } else {
             args->reg_count++;
         }
-
         return CSV_OK;
     }
 }
@@ -227,7 +226,6 @@ CSVResult bus_line_row_iterator(CSV *csv, const BusLine *bus_line, IterArgs *arg
         } else {
             args->reg_count++;
         }
-
         return CSV_OK;
     }
 }
