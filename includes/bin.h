@@ -45,7 +45,7 @@ bool write_bus_line(const BusLine *line, FILE *fp);
 
 bool read_meta(FILE *fp, DBMeta *meta);
 
-bool SELECT_FROM_WHERE_FILE(char *from_file, char *where_campo, char *where_valor);
-bool SELECT_FROM_WHERE_LINE(char *from_file, char *where_campo, char *where_valor);
+bool SELECT_FROM_WHERE_FILE(const char *from_file, const char *where_campo, const char *where_valor);
+bool SELECT_FROM_WHERE_LINE(const char *from_file, const char *where_campo, const char *where_valor);
 
 #endif

@@ -205,44 +205,44 @@ static void print_date(char date[10], FILE *out) {
     fprintf(out, "%s %.2s de %s de %s\n", DATE, day, months[atoi(month)-1], year);
 }
 
-void print_vehicle(FILE *out, DBVehicleRegister v){
-    fprintf(out, "%s %.5s\n", PREFIX, v.prefixo);
+void print_vehicle(FILE *out, DBVehicleRegister *reg){
+    fprintf(out, "%s %.5s\n", PREFIX, reg->prefixo);
 
-    if(v.tamanhoModelo != 0)
-        fprintf(out, "%s %s\n", MODEL, v.modelo);
+    if(reg->tamanhoModelo != 0)
+        fprintf(out, "%s %s\n", MODEL, reg->modelo);
     else
         fprintf(out, "%s %s\n", MODEL, NO_VALUE);
 
-    if(v.tamanhoCategoria != 0)
-        fprintf(out, "%s %s\n", CATEGORY, v.categoria);
+    if(reg->tamanhoCategoria != 0)
+        fprintf(out, "%s %s\n", CATEGORY, reg->categoria);
     else
         fprintf(out, "%s %s\n", CATEGORY, NO_VALUE);
 
-    if(strlen(v.data) != 0)
-        print_date(v.data, out);
+    if(strlen(reg->data) != 0)
+        print_date(reg->data, out);
     else
         fprintf(out, "%s %s\n", DATE, NO_VALUE);
 
-    if(v.quantidadeLugares != -1)
-        fprintf(out, "%s %d\n\n", PLACES, v.quantidadeLugares);
+    if(reg->quantidadeLugares != -1)
+        fprintf(out, "%s %d\n\n", PLACES, reg->quantidadeLugares);
     else
         fprintf(out, "%s %s\n\n", PLACES, NO_VALUE);
 }
 
-void print_bus_line(FILE *out, DBBusLineRegister b){
-    fprintf(out, "%s %d\n", COD_LINHA, b.codLinha);
-    if(b.tamanhoNome != 0)
-        fprintf(out, "%s %s\n", NAME_LINE, b.nomeLinha);
+void print_bus_line(FILE *out, DBBusLineRegister *reg){
+    fprintf(out, "%s %d\n", COD_LINHA, reg->codLinha);
+    if(reg->tamanhoNome != 0)
+        fprintf(out, "%s %s\n", NAME_LINE, reg->nomeLinha);
     else
         fprintf(out, "%s %s\n", NAME_LINE, NO_VALUE);
 
-    if(b.tamanhoCor != 0)
-        fprintf(out, "%s %s\n", DESCRIBE_COLOR, b.corLinha);
+    if(reg->tamanhoCor != 0)
+        fprintf(out, "%s %s\n", DESCRIBE_COLOR, reg->corLinha);
     else
         fprintf(out, "%s %s\n", DESCRIBE_COLOR, NO_VALUE);
 
     fprintf(out, "%s ", ACCEPT);
-    switch(b.aceitaCartao){
+    switch(reg->aceitaCartao){
         case 'S':
             fprintf(out, "%s\n\n", YES);
             break;
@@ -300,32 +300,32 @@ bool read_bus_line_register(FILE *fp, DBBusLineRegister *reg){
     return true;
 }
 
-bool check_vehicle_field_equals(DBVehicleRegister v, char *campo, char *valor){
+bool check_vehicle_field_equals(const DBVehicleRegister *reg, const char *campo, const char *valor){
     if(strcmp(campo, "prefixo") == 0)
-        return strstr(v.prefixo, valor) != NULL;
+        return strstr(reg->prefixo, valor) != NULL;
     else if(strcmp(campo, "data") == 0)
-        return strcmp(valor, v.data) == 0;
+        return strcmp(valor, reg->data) == 0;
     else if(strcmp(campo, "quantidadeLugares") == 0)
-        return v.quantidadeLugares == atoi(valor);
+        return reg->quantidadeLugares == (int)strtol(valor, NULL, 10);
     else if(strcmp(campo, "modelo") == 0)
-        return strcmp(valor, v.modelo) == 0;
+        return strcmp(valor, reg->modelo) == 0;
     else if(strcmp(campo, "categoria") == 0)
-        return strcmp(valor, v.categoria) == 0;
+        return strcmp(valor, reg->categoria) == 0;
 
     // Nunca deveria acontecer
     fprintf(stderr, "Erro: Invalid field.");
     exit(0);
 }
 
-bool check_bus_line_field_equals(DBBusLineRegister b, char *campo, char *valor){
+bool check_bus_line_field_equals(const DBBusLineRegister *reg, const char *campo, const char *valor){
     if(strcmp(campo, "codLinha") == 0)
-        return b.codLinha == atoi(valor);
+        return reg->codLinha == (int)strtol(valor, NULL, 10);
     else if(strcmp(campo, "aceitaCartao") == 0)
-        return *valor == b.aceitaCartao;
+        return *valor == reg->aceitaCartao;
     else if(strcmp(campo, "nomeLinha") == 0)
-        return strcmp(valor, b.nomeLinha) == 0;
+        return strcmp(valor, reg->nomeLinha) == 0;
     else if(strcmp(campo, "corLinha") == 0)
-        return strcmp(valor, b.corLinha) == 0;
+        return strcmp(valor, reg->corLinha) == 0;
 
     // Nunca deveria acontecer
     fprintf(stderr, "Erro: Invalid field.");
@@ -343,7 +343,7 @@ bool check_file(FILE *fp){
     }
 }
 
-bool SELECT_FROM_WHERE_FILE(char *from_file, char *where_campo, char *equals_to){
+bool SELECT_FROM_WHERE_FILE(const char *from_file, const char *where_campo, const char *equals_to){
     FILE *fp = fopen(from_file, "rb");
 
     if (!check_file(fp)) return false;
@@ -355,10 +355,10 @@ bool SELECT_FROM_WHERE_FILE(char *from_file, char *where_campo, char *equals_to)
         while(fread(&reg.removido, 1, 1, fp) == 1){
             read_vehicle_register(fp, &reg);
             if(where_campo != NULL && equals_to != NULL)
-                print = check_vehicle_field_equals(reg, where_campo, equals_to);
+                print = check_vehicle_field_equals(&reg, where_campo, equals_to);
 
             if(reg.removido != '0' && print)
-                print_vehicle(stdout, reg);
+                print_vehicle(stdout, &reg);
 
             deallocate_vehicle_strings(reg);
         }
@@ -372,7 +372,7 @@ bool SELECT_FROM_WHERE_FILE(char *from_file, char *where_campo, char *equals_to)
     }
 }
 
-bool SELECT_FROM_WHERE_LINE(char *from_file, char *where_field, char *equals_to){
+bool SELECT_FROM_WHERE_LINE(const char *from_file, const char *where_field, const char *equals_to){
     FILE *fp = fopen(from_file, "rb");
 
     if(!check_file(fp)) return false;
@@ -384,10 +384,10 @@ bool SELECT_FROM_WHERE_LINE(char *from_file, char *where_field, char *equals_to)
         while(fread(&reg.removido, 1, 1, fp) == 1){
             read_bus_line_register(fp, &reg);
             if(where_field != NULL && equals_to != NULL)
-                print = check_bus_line_field_equals(reg, where_field, equals_to);
+                print = check_bus_line_field_equals(&reg, where_field, equals_to);
 
             if(reg.removido != '0' && print)
-                print_bus_line(stdout, reg);
+                print_bus_line(stdout, &reg);
 
             deallocate_bus_line_strings(reg);
         }
