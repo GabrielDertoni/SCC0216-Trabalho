@@ -338,7 +338,7 @@ bool check_bus_line_field_equals(const DBBusLineRegister *reg, const char *campo
 
 bool check_file(FILE *fp){
     if(!fp){
-        fprintf(stderr, ERROR_FOUND);
+        printf(ERROR_FOUND);
         fclose(fp);
         return false;
     }
@@ -352,27 +352,32 @@ bool select_from_vehicle_where(const char *from_file, const char *where_field, c
 
     if (!check_file(fp)) return false;
 
-    bool print = (where_field == NULL);
     DBVehicleHeader header;
-    if(read_header_vehicle(fp, &header)){
-        DBVehicleRegister reg;
-        while(read_vehicle_register(fp, &reg)){
-            if(where_field != NULL && equals_to != NULL)
-                print = check_vehicle_field_equals(&reg, where_field, equals_to);
-
-            if(reg.removido != '0' && print)
-                print_vehicle(stdout, &reg);
-
-            deallocate_vehicle_strings(reg);
-        }
-        fclose(fp);
-        return true;
-    }
-    else{
-        printf("%s", NO_REGISTER);
+    if (!read_header_vehicle(fp, &header)) {
+        printf(ERROR_FOUND);
         fclose(fp);
         return false;
     }
+
+    if (header.meta.nroRegistros == 0) {
+        printf(NO_REGISTER);
+        fclose(fp);
+        return true;
+    }
+
+    bool print = (where_field == NULL);
+    DBVehicleRegister reg;
+    while(read_vehicle_register(fp, &reg)){
+        if(where_field != NULL && equals_to != NULL)
+            print = check_vehicle_field_equals(&reg, where_field, equals_to);
+
+        if(reg.removido != '0' && print)
+            print_vehicle(stdout, &reg);
+
+        deallocate_vehicle_strings(reg);
+    }
+    fclose(fp);
+    return true;
 }
 
 bool select_from_bus_line_where(const char *from_file, const char *where_field, const char *equals_to){
@@ -380,25 +385,30 @@ bool select_from_bus_line_where(const char *from_file, const char *where_field, 
 
     if(!check_file(fp)) return false;
 
-    bool print = (where_field == NULL);
     DBBusLineHeader header;
-    if(read_header_bus_line(fp, &header)){
-        DBBusLineRegister reg;
-        while(read_bus_line_register(fp, &reg)){
-            if(where_field != NULL && equals_to != NULL)
-                print = check_bus_line_field_equals(&reg, where_field, equals_to);
-
-            if(reg.removido != '0' && print)
-                print_bus_line(stdout, &reg);
-
-            deallocate_bus_line_strings(reg);
-        }
-        fclose(fp);
-        return true;
-    }
-    else{
-        fprintf(stderr, "%s", ERROR_FOUND);
+    if (!read_header_bus_line(fp, &header)) {
+        printf(ERROR_FOUND);
         fclose(fp);
         return false;
     }
+
+    if (header.meta.nroRegistros == 0) {
+        printf(NO_REGISTER);
+        fclose(fp);
+        return true;
+    }
+
+    bool print = (where_field == NULL);
+    DBBusLineRegister reg;
+    while(read_bus_line_register(fp, &reg)){
+        if(where_field != NULL && equals_to != NULL)
+            print = check_bus_line_field_equals(&reg, where_field, equals_to);
+
+        if(reg.removido != '0' && print)
+            print_bus_line(stdout, &reg);
+
+        deallocate_bus_line_strings(reg);
+    }
+    fclose(fp);
+    return true;
 }
