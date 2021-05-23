@@ -271,12 +271,16 @@ bool read_vehicle_register(FILE *fp, DBVehicleRegister *reg) {
     ASSERT(fread(&reg->codLinha, 4, 1, fp));
     ASSERT(fread(&reg->tamanhoModelo, 4, 1, fp));
     reg->modelo = malloc(reg->tamanhoModelo + 1);
-    ASSERT(fread(reg->modelo, reg->tamanhoModelo, 1, fp));
     reg->modelo[reg->tamanhoModelo] = '\0';
+    if (reg->tamanhoModelo > 0)
+        ASSERT(fread(reg->modelo, reg->tamanhoModelo, 1, fp));
+
     ASSERT(fread(&reg->tamanhoCategoria, 4, 1, fp));
     reg->categoria = malloc(reg->tamanhoCategoria + 1);
-    ASSERT(fread(reg->categoria, reg->tamanhoCategoria, 1, fp));
     reg->categoria[reg->tamanhoCategoria] = '\0';
+    if (reg->tamanhoCategoria > 0)
+        ASSERT(fread(reg->categoria, reg->tamanhoCategoria, 1, fp));
+
     return true;
 }
 
@@ -287,12 +291,16 @@ bool read_bus_line_register(FILE *fp, DBBusLineRegister *reg){
     ASSERT(fread(&reg->aceitaCartao, 1, 1, fp));
     ASSERT(fread(&reg->tamanhoNome, 4, 1, fp));
     reg->nomeLinha = malloc(reg->tamanhoNome + 1);
-    ASSERT(fread(reg->nomeLinha, reg->tamanhoNome, 1, fp));
     reg->nomeLinha[reg->tamanhoNome] = '\0';
+    if (reg->tamanhoNome > 0)
+        ASSERT(fread(reg->nomeLinha, reg->tamanhoNome, 1, fp));
+
     ASSERT(fread(&reg->tamanhoCor, 4, 1, fp));
     reg->corLinha = malloc(reg->tamanhoCor + 1);
-    ASSERT(fread(reg->corLinha, reg->tamanhoCor, 1, fp));
     reg->corLinha[reg->tamanhoCor] = '\0';
+    if (reg->tamanhoCor > 0)
+        ASSERT(fread(reg->corLinha, reg->tamanhoCor, 1, fp));
+
     return true;
 }
 
@@ -339,18 +347,18 @@ bool check_file(FILE *fp){
     }
 }
 
-bool SELECT_FROM_WHERE_FILE(const char *from_file, const char *where_campo, const char *equals_to){
+bool SELECT_FROM_WHERE_FILE(const char *from_file, const char *where_field, const char *equals_to){
     FILE *fp = fopen(from_file, "rb");
 
     if (!check_file(fp)) return false;
 
-    bool print = (where_campo == NULL);
+    bool print = (where_field == NULL);
     DBVehicleHeader header;
     if(read_header_vehicle(fp, &header)){
         DBVehicleRegister reg;
         while(read_vehicle_register(fp, &reg)){
-            if(where_campo != NULL && equals_to != NULL)
-                print = check_vehicle_field_equals(&reg, where_campo, equals_to);
+            if(where_field != NULL && equals_to != NULL)
+                print = check_vehicle_field_equals(&reg, where_field, equals_to);
 
             if(reg.removido != '0' && print)
                 print_vehicle(stdout, &reg);
