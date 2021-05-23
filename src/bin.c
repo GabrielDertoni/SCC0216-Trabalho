@@ -347,7 +347,7 @@ bool check_file(FILE *fp){
     }
 }
 
-bool SELECT_FROM_WHERE_FILE(const char *from_file, const char *where_field, const char *equals_to){
+bool select_from_vehicle_where(const char *from_file, const char *where_field, const char *equals_to){
     FILE *fp = fopen(from_file, "rb");
 
     if (!check_file(fp)) return false;
@@ -375,7 +375,7 @@ bool SELECT_FROM_WHERE_FILE(const char *from_file, const char *where_field, cons
     }
 }
 
-bool SELECT_FROM_WHERE_LINE(const char *from_file, const char *where_field, const char *equals_to){
+bool select_from_bus_line_where(const char *from_file, const char *where_field, const char *equals_to){
     FILE *fp = fopen(from_file, "rb");
 
     if(!check_file(fp)) return false;

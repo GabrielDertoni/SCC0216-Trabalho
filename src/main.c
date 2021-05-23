@@ -41,23 +41,23 @@ int main(void){
             break; 
 
         case OP_SELECT_FROM_VEHICLE:
-            SELECT_FROM_WHERE_FILE(file_name, NULL, NULL);
+            select_from_vehicle_where(file_name, NULL, NULL);
             break;
 
         case OP_SELECT_FROM_BUS_LINE:
-            SELECT_FROM_WHERE_LINE(file_name, NULL, NULL);
+            select_from_bus_line_where(file_name, NULL, NULL);
             break;
 
         case OP_SELECT_FROM_VEHICLE_WHERE:
             input1 = read_word(stdin);
             input2 = read_word(stdin);
-            SELECT_FROM_WHERE_FILE(file_name, input1, input2);
+            select_from_vehicle_where(file_name, input1, input2);
             break;
 
         case OP_SELECT_FROM_BUS_LINE_WHERE:
             input1 = read_word(stdin);
             input2 = read_word(stdin);
-            SELECT_FROM_WHERE_LINE(file_name, input1, input2);
+            select_from_bus_line_where(file_name, input1, input2);
             break;
 
         case OP_INSERT_INTO_VEHICLE:
