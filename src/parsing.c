@@ -8,11 +8,6 @@
 #include <csv.h>
 #include <bin.h>
 
-// Imprime um erro do csv.
-void print_error(CSV *csv) {
-    fprintf(stderr, "Error: %s.\n", csv_get_error(csv));
-}
-
 // Lê um número que caiba em 32 bits.
 static CSVResult parse_i32(CSV *csv, const char *input, int32_t *field) {
     if (!strcmp(input, NULL_VAL)) {
@@ -211,7 +206,6 @@ CSVResult vehicle_row_iterator(CSV *csv, const Vehicle *vehicle, IterArgs *args)
         } else {
             args->reg_count++;
         }
-
         return CSV_OK;
     }
 }
@@ -226,7 +220,6 @@ CSVResult bus_line_row_iterator(CSV *csv, const BusLine *bus_line, IterArgs *arg
         } else {
             args->reg_count++;
         }
-
         return CSV_OK;
     }
 }
@@ -246,25 +239,27 @@ CSVResult bus_line_row_iterator(CSV *csv, const BusLine *bus_line, IterArgs *arg
 // Nos macros `do while` só é utilizado para que possamos escrever um ';' depois
 // da utilização do macro.
 
-// Verifica se uma determinada expressão é um erro. Se for, imprime o erro e
-// pula para o label `teardown`.
-#define CSV_ASSERT(expr)          \
-    do {                          \
-        if (CSV_IS_ERROR(expr)) { \
-            print_error(csv);     \
-            goto teardown;        \
-        }                         \
-    } while (0)
-
-// Verifica se um determinado valor é diferente de 0. Se for, vai diretamente
-// para o label `teardown`.
-#define ASSERT_OR(expr, ...)              \
+#ifdef DEBUG
+// Verifica se um determinada expressão é verdadeira. Se não for, imprime uma
+// mensagem de erro fornecida e vai para o label `teardown`.
+#define ASSERT(expr, ...)                 \
     do {                                  \
-        if ((expr) != 0) {                \
+        if (!(expr)) {                    \
             fprintf(stderr, __VA_ARGS__); \
             goto teardown;                \
         }                                 \
     } while (0)
+#else
+// Verifica se um determinada expressão é verdadeira. Se não for, imprime uma
+// mensagem de erro sempre igual e vai para o label `teardown`.
+#define ASSERT(expr, ...)        \
+    do {                         \
+        if (!(expr)) {           \
+            printf(ERROR_FOUND); \
+            goto teardown;       \
+        }                        \
+    } while (0)
+#endif
 
 // Converte um csv para um arquivo binário de registros. A leitura do csv é
 // controlada por `csv` e a escrita no binário é controlada por `iter`. O
@@ -284,24 +279,26 @@ static bool csv_to_bin(
     IterFunc *iter,
     const char *sep
 ) {
-    CSVResult res = CSV_OK;
+    bool ok = true;
 
     FILE *fp = fopen(bin_fname, "w");
 
     if (!fp) {
+#ifdef DEBUG
         fprintf(stderr, "Error: Could not open file.\n");
+#else
+        printf(ERROR_FOUND);
+#endif
         return false;
     }
 
-    CSV_ASSERT(res = csv_parse_header(csv, sep));
+    ASSERT(ok = csv_parse_header(csv, sep) == CSV_OK,
+           "Error: %s.\n", csv_get_error(csv));
 
     // Primeira escrita, escreve o byte de status para garantir que outros
     // processos tentando ler o arquivo não leiam algo incompleto.
-    ASSERT_OR(
-        res = !update_header_status('0', fp),
-        "Error: could not write status to file %s.",
-        bin_fname
-    );
+    ASSERT(ok = update_header_status('0', fp),
+           "Error: could not write status to file %s.\n", bin_fname);
 
     // Pula o meta header. Como nem todas as informações são conhecidas nesse
     // momento, primeiro processamos as linhas e depois voltamos para escrever o
@@ -314,11 +311,8 @@ static bool csv_to_bin(
         const char *name = csv_get_col_name(csv, i);
         size_t len = strlen(name);
 
-        ASSERT_OR(
-            res = !fwrite(name, len * sizeof(char), 1, fp),
-            "Error: could not write column name to file %s.",
-            bin_fname
-        );
+        ASSERT(ok = fwrite(name, len * sizeof(char), 1, fp),
+               "Error: could not write column name to file %s.\n", bin_fname);
     }
 
     // Configura os argumentos do iterador. Esses valores serão modificados para
@@ -330,7 +324,8 @@ static bool csv_to_bin(
     };
 
     // Itera por todas as linhas do csv e escreve os registros no binário.
-    CSV_ASSERT(res = csv_iterate_rows(csv, sep, iter, &args));
+    ASSERT(ok = csv_iterate_rows(csv, sep, iter, &args) == CSV_OK,
+           "Error: %s.\n", csv_get_error(csv));
 
     DBMeta meta = {
         .status          = '1',
@@ -340,39 +335,50 @@ static bool csv_to_bin(
     };
 
     // Volta e atualiza o meta header.
-    ASSERT_OR(
-        res = !update_header_meta(meta, fp),
-        "Error: could not write the meta header to file %s.",
-        bin_fname
-    );
+    ASSERT(ok = update_header_meta(meta, fp),
+           "Error: could not write the meta header to file %s.\n", bin_fname);
 
 teardown:
     // Libera os valores abertos/alocados.
     fclose(fp);
 
-    // Nesse momento, `res = 0` somente se não houve erro. Mas nesse caso
-    // queremos retornar `true`.
-    return !res;
+    return ok;
 }
 
 bool vehicle_csv_to_bin(const char *csv_fname, const char *bin_fname) {
     CSV csv = configure_vehicle_csv();
-    csv_open(&csv, csv_fname);
+    bool ok = csv_open(&csv, csv_fname) == CSV_OK;
 
-    bool res = csv_to_bin(&csv, bin_fname, (IterFunc *)vehicle_row_iterator, ",");
+    if (ok) {
+        ok = csv_to_bin(&csv, bin_fname, (IterFunc *)vehicle_row_iterator, ",");
+    } else {
+#ifdef DEBUG
+        fprintf(stderr, "Error: %s.\n", csv_get_error(&csv));
+#else
+        printf(ERROR_FOUND);
+#endif
+    }
 
     csv_drop(csv);
-    return res;
+    return ok;
 }
 
 bool bus_line_csv_to_bin(const char *csv_fname, const char *bin_fname) {
     CSV csv = configure_bus_line_csv();
-    csv_open(&csv, csv_fname);
+    bool ok = csv_open(&csv, csv_fname) == CSV_OK;
 
-    bool res = csv_to_bin(&csv, bin_fname, (IterFunc *)bus_line_row_iterator, ",");
+    if (ok) {
+        ok = csv_to_bin(&csv, bin_fname, (IterFunc *)bus_line_row_iterator, ",");
+    } else {
+#ifdef DEBUG
+        fprintf(stderr, "Error: %s.\n", csv_get_error(&csv));
+#else
+        printf(ERROR_FOUND);
+#endif
+    }
 
     csv_drop(csv);
-    return res;
+    return ok;
 }
 
 // Lê as linhas de um csv com campos separados por `sep` e escreve os registros
@@ -384,24 +390,22 @@ static bool csv_append_to_bin(const char *bin_fname, CSV *csv, IterFunc *iter, c
     FILE *fp = fopen(bin_fname, "r+b");
 
     if (!fp) {
+#ifdef DEBUG
         fprintf(stderr, "Error: Could not open file.\n");
+#else
+        printf(ERROR_FOUND);
+#endif
         return false;
     }
 
-    CSVResult res = CSV_OK;
+    bool ok = true;
     DBMeta meta;
 
-    ASSERT_OR(
-        res = !read_header_meta(&meta, fp),
-        "Error: could not read meta header from file '%s'.",
-        bin_fname
-    );
+    ASSERT(ok = read_meta(fp, &meta),
+           "Error: could not read meta header from file '%s'.\n", bin_fname);
 
-    ASSERT_OR(
-        res = !update_header_status('0', fp),
-        "Error: could not write status to file '%s'.",
-        bin_fname
-    );
+    ASSERT(ok = update_header_status('0', fp),
+           "Error: could not write status to file '%s'.\n", bin_fname);
 
     IterArgs args = {
         .fp                = fp,
@@ -412,40 +416,39 @@ static bool csv_append_to_bin(const char *bin_fname, CSV *csv, IterFunc *iter, c
     // Vai para o fim do arquivo para adicionar novos registros.
     fseek(fp, 0L, SEEK_END);
 
-    CSV_ASSERT(res = csv_iterate_rows(csv, sep, (IterFunc *)iter, &args));
+    ASSERT(ok = csv_iterate_rows(csv, sep, (IterFunc *)iter, &args) == CSV_OK,
+           "Error: %s.\n", csv_get_error(csv));
 
     meta.status = '1';
+    meta.byteProxReg = ftell(fp);
     meta.nroRegRemovidos += args.removed_reg_count;
     meta.nroRegistros += args.reg_count;
 
-    ASSERT_OR(
-        res = !update_header_meta(meta, fp),
-        "Error: could not write meta header to file '%s'.",
-        bin_fname
-    );
+    ASSERT(ok = update_header_meta(meta, fp),
+           "Error: could not write meta header to file '%s'.\n", bin_fname);
 
 teardown:
     fclose(fp);
 
-    return !res;
+    return ok;
 }
 
-bool vehicle_from_stdin_append_to_bin(const char *bin_fname) {
+bool vehicle_append_to_bin_from_stdin(const char *bin_fname) {
     CSV csv = configure_vehicle_csv();
     csv_use_fp(&csv, stdin);
 
-    bool res = csv_append_to_bin(bin_fname, &csv, (IterFunc *)vehicle_row_iterator, " ");
+    bool ok = csv_append_to_bin(bin_fname, &csv, (IterFunc *)vehicle_row_iterator, " ");
 
     csv_drop(csv);
-    return res;
+    return ok;
 }
 
-bool bus_line_from_stdin_append_to_bin(const char *bin_fname) {
+bool bus_line_append_to_bin_from_stdin(const char *bin_fname) {
     CSV csv = configure_bus_line_csv();
     csv_use_fp(&csv, stdin);
 
-    bool res = csv_append_to_bin(bin_fname, &csv, (IterFunc *)bus_line_row_iterator, " ");
+    bool ok = csv_append_to_bin(bin_fname, &csv, (IterFunc *)bus_line_row_iterator, " ");
 
     csv_drop(csv);
-    return res;
+    return ok;
 }

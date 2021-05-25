@@ -143,7 +143,7 @@ void csv_drop(CSV csv) {
         free(csv.values);
 
     for (int i = 0; i < csv.n_columns; i++)
-	    if (csv.columns[i].name)
+        if (csv.columns[i].name)
             free(csv.columns[i].name);
 
     free(csv.columns);
