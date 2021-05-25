@@ -12,6 +12,7 @@
 // `false` da função.
 #define ASSERT(expr) if ((expr) != 1) return false
 
+// Macros com mensagens a serem exibidas.
 #define NO_REGISTER     "Registro inexistente.\n"
 #define NO_VALUE        "campo com valor nulo"
 #define PREFIX          "Prefixo do veiculo:"
@@ -67,7 +68,7 @@ bool write_vehicle(const Vehicle *vehicle, FILE *fp) {
     char prefixo[5];
 
     char removido;
-    // 
+
     if (vehicle->prefixo[0] == REMOVED_MARKER) {
         removido = '0';
         memcpy(prefixo, &vehicle->prefixo[1], sizeof(prefixo) - 1);
@@ -159,6 +160,7 @@ bool write_bus_line(const BusLine *line, FILE *fp) {
     return true;
 }
 
+// Lê os metadados dos arquivos binários
 bool read_meta(FILE *fp, DBMeta *meta){
     ASSERT(fread(&meta->status, 1, 1, fp));
     ASSERT(meta->status == '1');
@@ -168,6 +170,7 @@ bool read_meta(FILE *fp, DBMeta *meta){
     return true;
 }
 
+// Lê o cabeçalho de um arquivo binário que contém os registros de veículo
 bool read_header_vehicle(FILE *fp, DBVehicleHeader *header){
     ASSERT(read_meta(fp, &header->meta));
     ASSERT(fread(&header->descrevePrefixo, 18, 1, fp));
@@ -179,6 +182,7 @@ bool read_header_vehicle(FILE *fp, DBVehicleHeader *header){
     return true;
 }
 
+// Lê o cabeçalho de um arquivo binário que contém os registros das linhas de ônibus
 bool read_header_bus_line(FILE *fp, DBBusLineHeader *header){
     ASSERT(read_meta(fp, &header->meta));
     ASSERT(fread(&header->descreveCodigo, 15, 1, fp));
@@ -188,6 +192,7 @@ bool read_header_bus_line(FILE *fp, DBBusLineHeader *header){
     return true;
 }
 
+// Imprime a data de entrada de um veículo na frota no formato 'DD de texto(MM) de AAAA'
 static void print_date(char date[10], FILE *out) {
     const char *months[12] = { "janeiro", "fevereiro", "março", "abril", "maio",
                                "junho", "julho", "agosto", "setembro", "outubro",
@@ -199,6 +204,7 @@ static void print_date(char date[10], FILE *out) {
     fprintf(out, "%s %.2s de %s de %s\n", DATE, day, months[atoi(month)-1], year);
 }
 
+// Imprime as informações de busca do arquivo binário de veículo
 void print_vehicle(FILE *out, DBVehicleRegister *reg){
     fprintf(out, "%s %.5s\n", PREFIX, reg->prefixo);
 
@@ -223,6 +229,7 @@ void print_vehicle(FILE *out, DBVehicleRegister *reg){
         fprintf(out, "%s %s\n\n", PLACES, NO_VALUE);
 }
 
+// Imprime as informações de busca do arquivo binário das linhas de ônibus
 void print_bus_line(FILE *out, DBBusLineRegister *reg){
     fprintf(out, "%s %d\n", COD_LINHA, reg->codLinha);
     if(reg->tamanhoNome != 0)
@@ -252,16 +259,24 @@ void print_bus_line(FILE *out, DBBusLineRegister *reg){
     }
 }
 
+// Desaloca a memória alocada para as strings categoria e modelo dos veículos
 static void deallocate_vehicle_strings(DBVehicleRegister v){
     free(v.categoria);
     free(v.modelo);
 }
 
+// Desaloca a memória alocada para as strings nomeLinha e corLinha das linhas de ônibus
 static void deallocate_bus_line_strings(DBBusLineRegister b){
     free(b.nomeLinha);
     free(b.corLinha);
 }
 
+/*
+ * Lê os registros de um arquivo binário de veículos
+ * @param fp - ponteiro do arquivo binário
+ * @param reg - ponteiro de DBVehicleRegister
+ * @return 'true' se for lido com sucesso 'false' se houver algum erro
+*/ 
 bool read_vehicle_register(FILE *fp, DBVehicleRegister *reg) {
     ASSERT(fread(&reg->removido, 1, 1, fp));
     ASSERT(fread(&reg->tamanhoRegistro, 4, 1, fp));
@@ -284,6 +299,12 @@ bool read_vehicle_register(FILE *fp, DBVehicleRegister *reg) {
     return true;
 }
 
+/*
+ * Lê os registros de um arquivo binário de linhas de ônibus
+ * @param fp - ponteiro do arquivo binário
+ * @param reg - ponteiro de DBBusLineRegister
+ * @return 'true' se for lido com sucesso 'false' se houver algum erro
+*/
 bool read_bus_line_register(FILE *fp, DBBusLineRegister *reg){
     ASSERT(fread(&reg->removido, 1, 1, fp));
     ASSERT(fread(&reg->tamanhoRegistro, 4, 1, fp));
@@ -304,38 +325,57 @@ bool read_bus_line_register(FILE *fp, DBBusLineRegister *reg){
     return true;
 }
 
-bool check_vehicle_field_equals(const DBVehicleRegister *reg, const char *campo, const char *valor){
-    if(strcmp(campo, "prefixo") == 0)
-        return strstr(reg->prefixo, valor) != NULL;
-    else if(strcmp(campo, "data") == 0)
-        return strcmp(valor, reg->data) == 0;
-    else if(strcmp(campo, "quantidadeLugares") == 0)
-        return reg->quantidadeLugares == (int)strtol(valor, NULL, 10);
-    else if(strcmp(campo, "modelo") == 0)
-        return strcmp(valor, reg->modelo) == 0;
-    else if(strcmp(campo, "categoria") == 0)
-        return strcmp(valor, reg->categoria) == 0;
+/*
+ * Verifica se o atual registro satisfaz as condições de busca
+ * @param reg - ponteiro que contém as informações do registro de veículos
+ * @param field - string que contém o campo a ser buscado
+ * @param equals - string que contém o valor a ser comparado
+ * @return 'true' se o valor do campo do registro buscado equivale ao valor de busca 'false' se não equivaler
+ * 
+ * Exibe uma mensagem de erro caso algo inesperado ocorra e termina o programa
+*/
+bool check_vehicle_field_equals(const DBVehicleRegister *reg, const char *field, const char *equals){
+    if(strcmp(field, "prefixo") == 0)
+        return strstr(reg->prefixo, equals) != NULL;
+    else if(strcmp(field, "data") == 0)
+        return strcmp(equals, reg->data) == 0;
+    else if(strcmp(field, "quantidadeLugares") == 0)
+        return reg->quantidadeLugares == (int)strtol(equals, NULL, 10);
+    else if(strcmp(field, "modelo") == 0)
+        return strcmp(equals, reg->modelo) == 0;
+    else if(strcmp(field, "categoria") == 0)
+        return strcmp(equals, reg->categoria) == 0;
 
     // Nunca deveria acontecer
     fprintf(stderr, "Erro: Invalid field.");
     exit(0);
 }
 
-bool check_bus_line_field_equals(const DBBusLineRegister *reg, const char *campo, const char *valor){
-    if(strcmp(campo, "codLinha") == 0)
-        return reg->codLinha == (int)strtol(valor, NULL, 10);
-    else if(strcmp(campo, "aceitaCartao") == 0)
-        return *valor == reg->aceitaCartao;
-    else if(strcmp(campo, "nomeLinha") == 0)
-        return strcmp(valor, reg->nomeLinha) == 0;
-    else if(strcmp(campo, "corLinha") == 0)
-        return strcmp(valor, reg->corLinha) == 0;
+/*
+ * Verifica se o atual registro satisfaz as condições de busca
+ * @param reg - ponteiro que contém as informações do registro de veículos
+ * @param field - string que contém o campo a ser buscado
+ * @param equals - string que contém o valor a ser comparado
+ * @return 'true' se o valor do campo do registro buscado equivale ao valor de busca 'false' se não equivaler
+ * 
+ * Exibe uma mensagem de erro caso algo inesperado ocorra e termina o programa
+*/
+bool check_bus_line_field_equals(const DBBusLineRegister *reg, const char *field, const char *equals){
+    if(strcmp(field, "codLinha") == 0)
+        return reg->codLinha == (int)strtol(equals, NULL, 10);
+    else if(strcmp(field, "aceitaCartao") == 0)
+        return *equals == reg->aceitaCartao;
+    else if(strcmp(field, "nomeLinha") == 0)
+        return strcmp(equals, reg->nomeLinha) == 0;
+    else if(strcmp(field, "corLinha") == 0)
+        return strcmp(equals, reg->corLinha) == 0;
 
     // Nunca deveria acontecer
     fprintf(stderr, "Erro: Invalid field.");
     exit(0);
 }
 
+// Verifica se o arquivo existe no diretório. Se sim, retorna true, se não, exibe a mensagem de erro correspondente e retorna false
 bool check_file(FILE *fp){
     if(!fp){
         printf(ERROR_FOUND);

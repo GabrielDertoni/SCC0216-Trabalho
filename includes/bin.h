@@ -42,10 +42,23 @@ bool write_bus_lines_header(DBBusLineHeader header, FILE *fp);
 // Escreve um registro de linha de ônibus no arquivo.
 bool write_bus_line(const BusLine *line, FILE *fp);
 
-
+// Lê os meta dados de um arquivo fp e salva os valores nos campos correspondentes de meta.
 bool read_meta(FILE *fp, DBMeta *meta);
 
-bool select_from_vehicle_where(const char *from_file, const char *where_campo, const char *where_valor);
+/* 
+  * Seleciona os dados de uma tabela que contém os arquivos veículos
+  * @param from_file - caminho do arquivo binário que contém os veículos
+  * @param where_field - nome do campo a ser buscado na tabela -> NULL exibe todos os valores
+  * @param equals_to - valor do campo a ser buscado na tabela -> NULL exibe todos os valores
+*/
+bool select_from_vehicle_where(const char *from_file, const char *where_field, const char *equals_to);
+
+/* 
+  * Seleciona os dados de uma tabela que contém os arquivos das linhas de ônibus
+  * @param from_file - caminho do arquivo binário que contém as linhas de ônibus
+  * @param where_field - nome do campo a ser buscado na tabela -> NULL exibe todos os valores
+  * @param equals_to - valor do campo a ser buscado na tabela -> NULL exibe todos os valores
+*/
 bool select_from_bus_line_where(const char *from_file, const char *where_campo, const char *where_valor);
 
 #endif
