@@ -185,7 +185,7 @@ bool read_header_bus_line(FILE *fp, DBBusLineHeader *header){
 }
 
 // Imprime a data de entrada de um veículo na frota no formato 'DD de texto(MM) de AAAA'
-static void print_date(char date[10], FILE *out, char print_date[35]) {
+static void print_date(char date[10], FILE *out, char *print_date) {
     const char *months[12] = { "janeiro", "fevereiro", "março", "abril", "maio",
                                "junho", "julho", "agosto", "setembro", "outubro",
                                "novembro", "dezembro" };
