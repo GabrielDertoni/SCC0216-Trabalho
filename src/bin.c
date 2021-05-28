@@ -165,7 +165,6 @@ bool read_meta(FILE *fp, DBMeta *meta){
 bool read_header_vehicle(FILE *fp, DBVehicleHeader *header){
     ASSERT(read_meta(fp, &header->meta));
     ASSERT(fread(&header->descrevePrefixo, 18, 1, fp));
-    printf("pref: %s\n", header->descrevePrefixo);
     ASSERT(fread(&header->descreveData, 35, 1, fp));
     ASSERT(fread(&header->descreveLugares, 42, 1, fp));
     ASSERT(fread(&header->descreveLinhas, 26, 1, fp));
@@ -185,7 +184,7 @@ bool read_header_bus_line(FILE *fp, DBBusLineHeader *header){
 }
 
 // Imprime a data de entrada de um veículo na frota no formato 'DD de texto(MM) de AAAA'
-static void print_date(char date[10], FILE *out, char print_date[35]) {
+static void print_date(char date[10], FILE *out, char *print) {
     const char *months[12] = { "janeiro", "fevereiro", "março", "abril", "maio",
                                "junho", "julho", "agosto", "setembro", "outubro",
                                "novembro", "dezembro" };
@@ -193,7 +192,7 @@ static void print_date(char date[10], FILE *out, char print_date[35]) {
     char *year = strsep(&parse_ptr, "-");
     char *month = strsep(&parse_ptr, "-");
     char *day = strsep(&parse_ptr, "-");
-    fprintf(out, "%.35s: %.2s de %s de %s\n", print_date, day, months[atoi(month)-1], year);
+    fprintf(out, "%.35s: %.2s de %s de %s\n", print, day, months[atoi(month)-1], year);
 }
 
 // Imprime as informações de busca do arquivo binário de veículo
