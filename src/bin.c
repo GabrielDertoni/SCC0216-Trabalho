@@ -15,15 +15,6 @@
 // Macros com mensagens a serem exibidas.
 #define NO_REGISTER     "Registro inexistente.\n"
 #define NO_VALUE        "campo com valor nulo"
-#define PREFIX          "Prefixo do veiculo:"
-#define MODEL           "Modelo do veiculo:"
-#define CATEGORY        "Categoria do veiculo:"
-#define DATE            "Data de entrada do veiculo na frota:"
-#define PLACES          "Quantidade de lugares sentados disponiveis:"
-#define COD_LINHA       "Codigo da linha:"
-#define NAME_LINE       "Nome da linha:"
-#define DESCRIBE_COLOR  "Cor que descreve a linha:"
-#define ACCEPT          "Aceita cartao:"
 #define YES             "PAGAMENTO SOMENTE COM CARTAO SEM PRESENCA DE COBRADOR"
 #define NO              "PAGAMENTO EM CARTAO E DINHEIRO"
 #define WEEKEND         "PAGAMENTO EM CARTAO SOMENTE NO FINAL DE SEMANA"
@@ -174,6 +165,7 @@ bool read_meta(FILE *fp, DBMeta *meta){
 bool read_header_vehicle(FILE *fp, DBVehicleHeader *header){
     ASSERT(read_meta(fp, &header->meta));
     ASSERT(fread(&header->descrevePrefixo, 18, 1, fp));
+    printf("pref: %s\n", header->descrevePrefixo);
     ASSERT(fread(&header->descreveData, 35, 1, fp));
     ASSERT(fread(&header->descreveLugares, 42, 1, fp));
     ASSERT(fread(&header->descreveLinhas, 26, 1, fp));
@@ -193,7 +185,7 @@ bool read_header_bus_line(FILE *fp, DBBusLineHeader *header){
 }
 
 // Imprime a data de entrada de um veículo na frota no formato 'DD de texto(MM) de AAAA'
-static void print_date(char date[10], FILE *out) {
+static void print_date(char date[10], FILE *out, char print_date[35]) {
     const char *months[12] = { "janeiro", "fevereiro", "março", "abril", "maio",
                                "junho", "julho", "agosto", "setembro", "outubro",
                                "novembro", "dezembro" };
@@ -201,60 +193,59 @@ static void print_date(char date[10], FILE *out) {
     char *year = strsep(&parse_ptr, "-");
     char *month = strsep(&parse_ptr, "-");
     char *day = strsep(&parse_ptr, "-");
-    fprintf(out, "%s %.2s de %s de %s\n", DATE, day, months[atoi(month)-1], year);
+    fprintf(out, "%.35s: %.2s de %s de %s\n", print_date, day, months[atoi(month)-1], year);
 }
 
 // Imprime as informações de busca do arquivo binário de veículo
-void print_vehicle(FILE *out, DBVehicleRegister *reg){
-    fprintf(out, "%s %.5s\n", PREFIX, reg->prefixo);
+void print_vehicle(FILE *out, DBVehicleRegister *reg, DBVehicleHeader *header){
+    fprintf(out, "%.18s: %.5s\n", header->descrevePrefixo, reg->prefixo);
 
     if(reg->tamanhoModelo != 0)
-        fprintf(out, "%s %s\n", MODEL, reg->modelo);
+        fprintf(out, "%.17s: %s\n", header->descreveModelo, reg->modelo);
     else
-        fprintf(out, "%s %s\n", MODEL, NO_VALUE);
+        fprintf(out, "%.17s: %s\n", header->descreveModelo, NO_VALUE);
 
     if(reg->tamanhoCategoria != 0)
-        fprintf(out, "%s %s\n", CATEGORY, reg->categoria);
+        fprintf(out, "%.20s: %s\n", header->descreveCategoria, reg->categoria);
     else
-        fprintf(out, "%s %s\n", CATEGORY, NO_VALUE);
+        fprintf(out, "%.20s: %s\n", header->descreveCategoria, NO_VALUE);
 
     if(strlen(reg->data) != 0)
-        print_date(reg->data, out);
+        print_date(reg->data, out, header->descreveData);
     else
-        fprintf(out, "%s %s\n", DATE, NO_VALUE);
+        fprintf(out, "%35s: %s\n", header->descreveData, NO_VALUE);
 
     if(reg->quantidadeLugares != -1)
-        fprintf(out, "%s %d\n\n", PLACES, reg->quantidadeLugares);
+        fprintf(out, "%.42s: %d\n\n", header->descreveLugares, reg->quantidadeLugares);
     else
-        fprintf(out, "%s %s\n\n", PLACES, NO_VALUE);
+        fprintf(out, "%.42s: %s\n\n", header->descreveLugares, NO_VALUE);
 }
 
 // Imprime as informações de busca do arquivo binário das linhas de ônibus
-void print_bus_line(FILE *out, DBBusLineRegister *reg){
-    fprintf(out, "%s %d\n", COD_LINHA, reg->codLinha);
+void print_bus_line(FILE *out, DBBusLineRegister *reg, DBBusLineHeader *header){
+    fprintf(out, "%.15s: %d\n", header->descreveCodigo, reg->codLinha);
     if(reg->tamanhoNome != 0)
-        fprintf(out, "%s %s\n", NAME_LINE, reg->nomeLinha);
+        fprintf(out, "%.13s: %s\n", header->descreveNome, reg->nomeLinha);
     else
-        fprintf(out, "%s %s\n", NAME_LINE, NO_VALUE);
+        fprintf(out, "%.13s: %s\n", header->descreveNome, NO_VALUE);
 
     if(reg->tamanhoCor != 0)
-        fprintf(out, "%s %s\n", DESCRIBE_COLOR, reg->corLinha);
+        fprintf(out, "%.24s: %s\n", header->descreveCor, reg->corLinha);
     else
-        fprintf(out, "%s %s\n", DESCRIBE_COLOR, NO_VALUE);
+        fprintf(out, "%.24s: %s\n", header->descreveCor, NO_VALUE);
 
-    fprintf(out, "%s ", ACCEPT);
     switch(reg->aceitaCartao){
         case 'S':
-            fprintf(out, "%s\n\n", YES);
+            fprintf(out, "%.13s: %s\n\n", header->descreveCartao, YES);
             break;
         case 'N':
-            fprintf(out, "%s\n\n", NO);
+            fprintf(out, "%.13s: %s\n\n", header->descreveCartao, NO);
             break;
         case 'F':
-            fprintf(out, "%s\n\n", WEEKEND);
+            fprintf(out, "%.13s: %s\n\n", header->descreveCartao, WEEKEND);
             break;
         default:
-            fprintf(out, "%s\n\n", NO_VALUE);
+            fprintf(out, "%.13s: %s\n\n", header->descreveCartao, NO_VALUE);
             break;
     }
 }
@@ -412,7 +403,7 @@ bool select_from_vehicle_where(const char *from_file, const char *where_field, c
             print = check_vehicle_field_equals(&reg, where_field, equals_to);
 
         if(reg.removido != '0' && print)
-            print_vehicle(stdout, &reg);
+            print_vehicle(stdout, &reg, &header);
 
         deallocate_vehicle_strings(reg);
     }
@@ -445,7 +436,7 @@ bool select_from_bus_line_where(const char *from_file, const char *where_field, 
             print = check_bus_line_field_equals(&reg, where_field, equals_to);
 
         if(reg.removido != '0' && print)
-            print_bus_line(stdout, &reg);
+            print_bus_line(stdout, &reg, &header);
 
         deallocate_bus_line_strings(reg);
     }
