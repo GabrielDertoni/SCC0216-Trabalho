@@ -212,7 +212,7 @@ void print_vehicle(FILE *out, DBVehicleRegister *reg, DBVehicleHeader *header){
     if(strlen(reg->data) != 0)
         print_date(reg->data, out, header->descreveData);
     else
-        fprintf(out, "%35s: %s\n", header->descreveData, NO_VALUE);
+        fprintf(out, "%.35s: %s\n", header->descreveData, NO_VALUE);
 
     if(reg->quantidadeLugares != -1)
         fprintf(out, "%.42s: %d\n\n", header->descreveLugares, reg->quantidadeLugares);
