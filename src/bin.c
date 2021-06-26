@@ -369,7 +369,6 @@ bool check_bus_line_field_equals(const DBBusLineRegister *reg, const char *field
 bool check_file(FILE *fp){
     if(!fp){
         printf(ERROR_FOUND);
-        fclose(fp);
         return false;
     }
     else{
@@ -389,24 +388,30 @@ bool select_from_vehicle_where(const char *from_file, const char *where_field, c
         return false;
     }
 
-    if (header.meta.nroRegistros == 0) {
-        printf(NO_REGISTER);
-        fclose(fp);
-        return true;
-    }
-
     bool print = (where_field == NULL);
     DBVehicleRegister reg;
-    while(read_vehicle_register(fp, &reg)){
+
+    int n_matching = 0;
+    for (int i = 0; i < header.meta.nroRegistros; i++){
+        read_vehicle_register(fp, &reg);
+
         if(where_field != NULL && equals_to != NULL)
             print = check_vehicle_field_equals(&reg, where_field, equals_to);
 
-        if(reg.removido != '0' && print)
+        if(reg.removido != '0' && print) {
             print_vehicle(stdout, &reg, &header);
+            n_matching++;
+        }
 
         deallocate_vehicle_strings(reg);
     }
     fclose(fp);
+
+    if (n_matching > 0) {
+        printf(NO_REGISTER);
+        return false;
+    }
+
     return true;
 }
 
@@ -422,23 +427,28 @@ bool select_from_bus_line_where(const char *from_file, const char *where_field, 
         return false;
     }
 
-    if (header.meta.nroRegistros == 0) {
-        printf(NO_REGISTER);
-        fclose(fp);
-        return true;
-    }
-
     bool print = (where_field == NULL);
     DBBusLineRegister reg;
-    while(read_bus_line_register(fp, &reg)){
+
+    for (int i = 0; i < header.meta.nroRegistros; i++){
+        read_bus_line_register(fp, &reg);
+
         if(where_field != NULL && equals_to != NULL)
             print = check_bus_line_field_equals(&reg, where_field, equals_to);
 
-        if(reg.removido != '0' && print)
+        if(reg.removido != '0' && print) {
             print_bus_line(stdout, &reg, &header);
+            n_matching++;
+        }
 
         deallocate_bus_line_strings(reg);
     }
     fclose(fp);
+
+    if (n_matching > 0) {
+        printf(NO_REGISTER);
+        return false;
+    }
+
     return true;
 }
