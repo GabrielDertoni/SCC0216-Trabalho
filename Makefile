@@ -135,7 +135,7 @@ $(OBJ_DIR)/%.o: $(SRC)/%.c | $(OBJ_DIR)
 .SECONDEXPANSION:
 $(TEST_DIR)/test_%: $$(TEST)/test_%.c $$(wildcard $$(SRC)/%.c) | $(TEST_DIR)
 	@$(call PRINT_COMPILE, $<, $@)
-	@$(CC) $(CFLAGS) $^ $(TEST_INCLUDE) -o $@ -I $(TEST) -I $(HDR)
+	@$(CC) -g -DDEBUG $(CFLAGS) $^ $(TEST_INCLUDE) -o $@ -I $(TEST) -I $(HDR)
 
 # Removes all make generated directories and files
 clean:
