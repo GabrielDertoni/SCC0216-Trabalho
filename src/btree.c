@@ -26,6 +26,8 @@
 #define ASSERT(expr) \
     if (!(expr)) return false
 
+const uint64_t NULL_RRN = -1;
+
 typedef struct {
     int32_t  key;
     uint64_t value;
@@ -229,27 +231,23 @@ static bool write_node(BTreeMap *btree, Node node)  {
         // Se não for uma folha, temos a garantia de que há ao menos um nó filho.
         ASSERT(fwrite(&node.children[0], sizeof(uint32_t), 1, btree->fp));
     } else {
-        ASSERT(fwrite("@@@@", sizeof(uint32_t), 1, btree->fp));
+        ASSERT(fwrite(&NULL_RRN, sizeof(uint32_t), 1, btree->fp));
     }
 
-    int n_writen = sizeof(char) + 3 * sizeof(uint32_t);
-
-    for (int i = 0; i < node.len; i++) {
-        ASSERT(fwrite(&node.entries[i].key  , sizeof( int32_t), 1, btree->fp));
-        ASSERT(fwrite(&node.entries[i].value, sizeof(uint64_t), 1, btree->fp));
-
-        if (!node.is_leaf) {
-            ASSERT(fwrite(&node.children[i + 1], sizeof(uint32_t), 1, btree->fp));
+    for (int i = 0; i < CAPACITY - 1; i++) {
+        if (i < node.len) {
+            ASSERT(fwrite(&node.entries[i].key  , sizeof( int32_t), 1, btree->fp));
+            ASSERT(fwrite(&node.entries[i].value, sizeof(uint64_t), 1, btree->fp));
         } else {
-            ASSERT(fwrite("@@@@", sizeof(uint32_t), 1, btree->fp));
+            ASSERT(fwrite(&NULL_RRN, sizeof( int32_t), 1, btree->fp));
+            ASSERT(fwrite(&NULL_RRN, sizeof(uint64_t), 1, btree->fp));
         }
 
-        n_writen += sizeof(int32_t) * 2 + sizeof(uint64_t);
-    }
-
-    // Preenche o resto do espaço do nó com '@'
-    for (int i = n_writen; i < PAGE_SZ; i++) {
-        fwrite("@", sizeof(char), 1, btree->fp);
+        if (!node.is_leaf && i < node.len) {
+            ASSERT(fwrite(&node.children[i + 1], sizeof(uint32_t), 1, btree->fp));
+        } else {
+            ASSERT(fwrite(&NULL_RRN, sizeof(uint32_t), 1, btree->fp));
+        }
     }
 
     return true;
