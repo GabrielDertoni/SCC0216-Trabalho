@@ -23,6 +23,8 @@ typedef enum {
     OP_INSERT_INTO_BUS_LINE       =  8,
     OP_CREATE_INDEX_VEHICLE       =  9,
     OP_CREATE_INDEX_BUS_LINE      = 10,
+    OP_SEARCH_FOR_VEHICLE         = 11,
+    OP_SEARCH_FOR_BUS_LINE        = 12,
 } Op;
 
 void test(const char *fname) {
@@ -86,13 +88,35 @@ int main(void){
 
         case OP_CREATE_INDEX_VEHICLE:
             input1 = read_word(stdin);
-            index_vehicle_create(file_name, input1);
+            if (index_vehicle_create(file_name, input1))
+                binarioNaTela(input1);
             break;
 
         case OP_CREATE_INDEX_BUS_LINE:
             input1 = read_word(stdin);
-            index_bus_line_create(file_name, input1);
+            if (index_bus_line_create(file_name, input1))
+                binarioNaTela(input1);
             break;
+
+        case OP_SEARCH_FOR_VEHICLE: {
+            input1 = read_word(stdin);
+            input2 = read_word(stdin); // Garantido de ser "prefixo"
+
+            char prefixo[6];
+            scanf("\"%[^\"]s\"", prefixo);
+            search_for_vehicle(file_name, input1, prefixo);
+            break;
+        }
+
+        case OP_SEARCH_FOR_BUS_LINE: {
+            input1 = read_word(stdin);
+            input2 = read_word(stdin); // Garantido de ser "codLinha"
+
+            uint32_t code;
+            scanf(" %d", &code);
+            search_for_bus_line(file_name, input1, code);
+            break;
+        }
     }
 
     if (file_name != NULL)
