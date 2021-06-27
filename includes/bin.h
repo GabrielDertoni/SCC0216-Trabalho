@@ -83,4 +83,10 @@ bool select_from_vehicle_where(const char *from_file, const char *where_field, c
 */
 bool select_from_bus_line_where(const char *from_file, const char *where_campo, const char *where_valor);
 
+// Imprime as informações de busca do arquivo binário das linhas de ônibus
+void print_bus_line(FILE *out, DBBusLineRegister *reg, DBBusLineHeader *header);
+
+// Imprime as informações de busca do arquivo binário de veículo
+void print_vehicle(FILE *out, DBVehicleRegister *reg, DBVehicleHeader *header);
+
 #endif
