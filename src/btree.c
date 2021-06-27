@@ -165,10 +165,10 @@ BTreeMap btree_new() {
 }
 
 void btree_drop(BTreeMap btree) {
-    write_header(&btree, '1');
-
-    if (btree.fp)
+    if (btree.fp) {
+        write_header(&btree, '1');
         fclose(btree.fp);
+    }
 
     if (btree.error_msg)
         free(btree.error_msg);
@@ -203,11 +203,56 @@ BTreeResult btree_create(BTreeMap *btree, const char *fname) {
     btree->fp = fp;
 
     if (!write_header(btree, '0')) {
-        error(btree, "failed to create header in file %s\n", fname);
+        error(btree, "failed to create header in file %s", fname);
         return BTREE_FAIL;
     }
 
     return BTREE_OK;
+}
+
+bool btree_has_error(BTreeMap *btree) {
+    return btree->error_msg;
+}
+
+static int key_position(Node node, uint32_t key) {
+    int i;
+    for (i = 0; i < node.len && key > node.entries[i].key; i++);
+    return i;
+}
+
+static int64_t get(BTreeMap *btree, Node node, uint32_t key) {
+    int i = key_position(node, key);
+
+    if (i < node.len && node.entries[i].key == key) {
+        return node.entries[i].value;
+    }
+
+    if (!node.is_leaf) {
+        Node next;
+
+        if (!read_node(btree, node.children[i], &next)) {
+            error(btree, "failed to read node with RRN %d", node.children[i]);
+            return -1;
+        }
+
+        return get(btree, next, key);
+    }
+
+    return -1;
+}
+
+int64_t btree_get(BTreeMap *btree, uint32_t key) {
+    if (btree->rrn_root < 0) {
+        return -1;
+    }
+
+    Node root;
+    if (!read_node(btree, btree->rrn_root, &root)) {
+        error(btree, "unable to read root");
+        return -1;
+    }
+
+    return get(btree, root, key);
 }
 
 static Node node_from_entry(Entry entry, uint32_t rrn) {
@@ -281,12 +326,6 @@ static void insert_entry_inner(Node *node, Entry entry, uint32_t right_rrn, int 
     node->children[at + 1] = right_rrn;
 }
 
-static int entry_position(Node node, Entry entry) {
-    int i;
-    for (i = 0; i < node.len && entry.key > node.entries[i].key; i++);
-    return i;
-}
-
 static InsertResult node_split(BTreeMap *btree, Node left, Entry entry) {
     assert(left.len == CAPACITY);
 
@@ -307,7 +346,7 @@ static InsertResult node_split(BTreeMap *btree, Node left, Entry entry) {
     left.len = CAPACITY / 2;
 
     if (!write_node(btree, left) || !write_node(btree, right)) {
-        error(btree, "failed to split node when inserting entry with key %d\n", entry.key);
+        error(btree, "failed to split node when inserting entry with key %d", entry.key);
         return insert_fail();
     }
 
@@ -315,7 +354,7 @@ static InsertResult node_split(BTreeMap *btree, Node left, Entry entry) {
 }
 
 static InsertResult insert(BTreeMap *btree, Node head, Entry entry) {
-    int i = entry_position(head, entry);
+    int i = key_position(head, entry.key);
 
     if (head.is_leaf) {
         // É um nó folha, mas ainda possui espaço disponível -> insere
@@ -328,7 +367,7 @@ static InsertResult insert(BTreeMap *btree, Node head, Entry entry) {
 
         // Atualiza o nó no disco
         if (!write_node(btree, head)) {
-            error(btree, "failed to write node when inserting entry inplace with key %d\n", entry.key);
+            error(btree, "failed to write node when inserting entry inplace with key %d", entry.key);
             return insert_fail();
         }
 
@@ -344,7 +383,7 @@ static InsertResult insert(BTreeMap *btree, Node head, Entry entry) {
 
         // TODO: Podería atualizar somente a entry que mudou e não o nó inteiro.
         if (!write_node(btree, head)) {
-            error(btree, "failed to replace node entry with key %d\n", entry.key);
+            error(btree, "failed to replace node entry with key %d", entry.key);
             return insert_fail();
         }
         return insert_replaced(old);
@@ -376,7 +415,7 @@ static InsertResult insert(BTreeMap *btree, Node head, Entry entry) {
 
     // Ainda há espaço nesse nó -> adiciona entrada
     if (!write_node(btree, head)) {
-        error(btree, "failed to write node when promoting entry inplace with key %d\n", promoted.key);
+        error(btree, "failed to write node when promoting entry inplace with key %d", promoted.key);
         return insert_fail();
     }
 
