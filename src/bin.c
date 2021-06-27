@@ -391,10 +391,7 @@ bool select_from_vehicle_where(const char *from_file, const char *where_field, c
     bool print = (where_field == NULL);
     DBVehicleRegister reg;
 
-    int n_matching = 0;
-    for (int i = 0; i < header.meta.nroRegistros; i++){
-        read_vehicle_register(fp, &reg);
-
+    while (read_vehicle_register(fp, &reg)){
         if(where_field != NULL && equals_to != NULL)
             print = check_vehicle_field_equals(&reg, where_field, equals_to);
 
@@ -430,9 +427,8 @@ bool select_from_bus_line_where(const char *from_file, const char *where_field, 
     bool print = (where_field == NULL);
     DBBusLineRegister reg;
 
-    for (int i = 0; i < header.meta.nroRegistros; i++){
-        read_bus_line_register(fp, &reg);
-
+    int n_matching = 0;
+    while (read_bus_line_register(fp, &reg)){
         if(where_field != NULL && equals_to != NULL)
             print = check_bus_line_field_equals(&reg, where_field, equals_to);
 
