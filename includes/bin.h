@@ -45,6 +45,28 @@ bool write_bus_line(const BusLine *line, FILE *fp);
 // Lê os meta dados de um arquivo fp e salva os valores nos campos correspondentes de meta.
 bool read_meta(FILE *fp, DBMeta *meta);
 
+// Lê o cabeçalho de um arquivo binário que contém os registros das linhas de ônibus
+bool read_header_bus_line(FILE *fp, DBBusLineHeader *header);
+
+// Lê o cabeçalho de um arquivo binário que contém os registros de veículo
+bool read_header_vehicle(FILE *fp, DBVehicleHeader *header);
+
+/*
+ * Lê os registros de um arquivo binário de veículos
+ * @param fp - ponteiro do arquivo binário
+ * @param reg - ponteiro de DBVehicleRegister
+ * @return 'true' se for lido com sucesso 'false' se houver algum erro
+*/ 
+bool read_vehicle_register(FILE *fp, DBVehicleRegister *reg);
+
+/*
+ * Lê os registros de um arquivo binário de linhas de ônibus
+ * @param fp - ponteiro do arquivo binário
+ * @param reg - ponteiro de DBBusLineRegister
+ * @return 'true' se for lido com sucesso 'false' se houver algum erro
+*/
+bool read_bus_line_register(FILE *fp, DBBusLineRegister *reg);
+
 /* 
   * Seleciona os dados de uma tabela que contém os arquivos veículos
   * @param from_file - caminho do arquivo binário que contém os veículos
