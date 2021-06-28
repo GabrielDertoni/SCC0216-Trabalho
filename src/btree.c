@@ -26,8 +26,11 @@
 #define ASSERT(expr) \
     if (!(expr)) return false
 
+// Precisamos desse valor como uma variável para poder utilizar o endereço na
+// função `fwrite`.
 const uint64_t NULL_RRN = -1;
 
+// Uma
 typedef struct {
     int32_t  key;
     uint64_t value;
@@ -37,40 +40,14 @@ typedef struct {
     bool     is_leaf;
     uint32_t len;
     uint32_t rrn;
-    uint32_t children[CAPACITY + 1];
 
-    // Apenas CAPACITY - 1 espaços serão realmente ocupados. O espaço extra é
-    // pra podermos inserir uma `Entry` a mais de maneira ordenada e assim
-    // escolher facilmente `Entry` do meio para ser promovida.
+    // Apenas CAPACITY - 1 espaços serão realmente ocupados no campo `entries`.
+    // O espaço extra é pra podermos inserir uma `Entry` a mais de maneira
+    // ordenada e assim escolher facilmente `Entry` do meio para ser promovida.
+    // O mesmo vale para o campo `children`.
+    uint32_t children[CAPACITY + 1];
     Entry    entries[CAPACITY];
 } Node;
-
-typedef struct {
-    enum {
-        INSERT_SPLIT,
-        INSERT_REPLACE,
-        INSERT_FIT,
-        INSERT_FAIL,
-    } type;
-    Entry entry;
-    uint32_t rrn;
-} InsertResult;
-
-static inline InsertResult insert_fail() {
-    return (InsertResult) { .type = INSERT_FAIL };
-}
-
-static inline InsertResult insert_split(Entry entry, uint32_t rrn) {
-    return (InsertResult) { .type = INSERT_SPLIT, .entry = entry, .rrn = rrn };
-}
-
-static inline InsertResult insert_fit() {
-    return (InsertResult) { .type = INSERT_FIT };
-}
-
-static inline InsertResult insert_replaced(Entry entry) {
-  return (InsertResult){.type = INSERT_REPLACE, .entry = entry};
-}
 
 // Set csv `error_msg` to some format with variable arguments list.
 static void verror(BTreeMap *btree, const char *format, va_list ap) {
@@ -300,8 +277,7 @@ static bool write_node(BTreeMap *btree, Node node)  {
 
 static bool write_next_leaf(BTreeMap *btree, Entry entry) {
     Node leaf = node_from_entry(entry, btree->next_rrn++);
-    bool result = write_node(btree, leaf);
-    return result;
+    return write_node(btree, leaf);
 }
 
 static void insert_entry_leaf(Node *node, Entry entry, int at) {
@@ -316,16 +292,54 @@ static void insert_entry_leaf(Node *node, Entry entry, int at) {
 }
 
 static void insert_entry_inner(Node *node, Entry entry, uint32_t right_rrn, int at) {
-    uint32_t len = node->len;
-    insert_entry_leaf(node, entry, at);
-
-    if (at < len) {
-        memmove(&node->children[at + 2], &node->children[at + 1], (len - at) * sizeof(uint32_t));
+    // Se a inserção deve ser feita no meio do nó, shifta todos os registros
+    // e insere.
+    if (at < node->len) {
+        memmove(&node->entries[at + 1] , &node->entries[at]     , (node->len - at) * sizeof(Entry));
+        memmove(&node->children[at + 2], &node->children[at + 1], (node->len - at) * sizeof(uint32_t));
     }
 
+    node->entries[at] = entry;
     node->children[at + 1] = right_rrn;
+    node->len++;
 }
 
+// Um tipo interno que serve para somente para representar o comportamento de
+// uma inserção num nó filho.
+typedef struct {
+    // O tipo de inserção que ocorreu
+    enum {
+        INSERT_SPLIT,
+        INSERT_REPLACE,
+        INSERT_FIT,
+        INSERT_FAIL,
+    } type;
+    // A `entry` promovida, somente disponível quando `type = INSERT_SPLIT`
+    Entry entry;
+    // RRN do nó à direita do nó promovido, somente disponível quando `type = INSERT_SPLIT`
+    uint32_t rrn;
+} InsertResult;
+
+// Funções que ajudam a criar o tipo `InsertResult`.
+
+static inline InsertResult insertion_fail() {
+    return (InsertResult){ .type = INSERT_FAIL };
+}
+
+static inline InsertResult insertion_split(Entry entry, uint32_t rrn) {
+    return (InsertResult){ .type = INSERT_SPLIT, .entry = entry, .rrn = rrn };
+}
+
+static inline InsertResult insertion_fit() {
+    return (InsertResult){ .type = INSERT_FIT };
+}
+
+static inline InsertResult insertion_replaced(Entry entry) {
+    return (InsertResult){ .type = INSERT_REPLACE, .entry = entry };
+}
+
+// Divide um nó em dois. Cria um novo nó com as chaves maiores do que a chave
+// do meio. Retorna o RRN do nó criado e também a `entry` promovida.
 static InsertResult node_split(BTreeMap *btree, Node left, Entry entry) {
     assert(left.len == CAPACITY);
 
@@ -347,12 +361,14 @@ static InsertResult node_split(BTreeMap *btree, Node left, Entry entry) {
 
     if (!write_node(btree, left) || !write_node(btree, right)) {
         error(btree, "failed to split node when inserting entry with key %d", entry.key);
-        return insert_fail();
+        return insertion_fail();
     }
 
-    return insert_split(promoted, right.rrn);
+    return insertion_split(promoted, right.rrn);
 }
 
+// Insere um novo par chave-valor na BTree. Essa função assume que o nó raiz já
+// está criado.
 static InsertResult insert(BTreeMap *btree, Node head, Entry entry) {
     int i = key_position(head, entry.key);
 
@@ -368,15 +384,15 @@ static InsertResult insert(BTreeMap *btree, Node head, Entry entry) {
         // Atualiza o nó no disco
         if (!write_node(btree, head)) {
             error(btree, "failed to write node when inserting entry inplace with key %d", entry.key);
-            return insert_fail();
+            return insertion_fail();
         }
 
-        return insert_fit();
+        return insertion_fit();
     }
 
     // É um nó interno.
 
-    if (head.entries[i].key == entry.key) {
+    if (i < head.len && head.entries[i].key == entry.key) {
         // Encontramos outro nó com a mesma chave -> substitui, retorna a anterior.
         Entry old = head.entries[i];
         head.entries[i] = entry;
@@ -384,9 +400,9 @@ static InsertResult insert(BTreeMap *btree, Node head, Entry entry) {
         // TODO: Podería atualizar somente a entry que mudou e não o nó inteiro.
         if (!write_node(btree, head)) {
             error(btree, "failed to replace node entry with key %d", entry.key);
-            return insert_fail();
+            return insertion_fail();
         }
-        return insert_replaced(old);
+        return insertion_replaced(old);
     }
 
     // É um nó interno -> redireciona para o nó filho.
@@ -395,7 +411,7 @@ static InsertResult insert(BTreeMap *btree, Node head, Entry entry) {
 
     if (!read_node(btree, node_rrn, &node)) {
         error(btree, "failed to read node at RRN %d", node_rrn);
-        return insert_fail();
+        return insertion_fail();
     }
 
     InsertResult result = insert(btree, node, entry);
@@ -416,12 +432,14 @@ static InsertResult insert(BTreeMap *btree, Node head, Entry entry) {
     // Ainda há espaço nesse nó -> adiciona entrada
     if (!write_node(btree, head)) {
         error(btree, "failed to write node when promoting entry inplace with key %d", promoted.key);
-        return insert_fail();
+        return insertion_fail();
     }
 
-    return insert_fit();
+    return insertion_fit();
 }
 
+// Insere um novo par chave-valor na BTree. Cria um nó raiz caso ele não exista.
+// Essa função atua como um wrapper para a função interna `insert`.
 BTreeResult btree_insert(BTreeMap *btree, int32_t key, uint64_t value) {
     Entry entry = {
         .key = key,
@@ -471,7 +489,7 @@ BTreeResult btree_insert(BTreeMap *btree, int32_t key, uint64_t value) {
     return BTREE_OK;
 }
 
-
+/* Funcionalidades adicionais */
 
 static void print_node(Node node) {
     printf("[%d]{ %d: %ld", node.rrn, node.entries[0].key, node.entries[0].value);
@@ -481,9 +499,11 @@ static void print_node(Node node) {
     printf(" }");
 }
 
+// Imprime os conteúdos de uma BTree. ATENÇÃO: Essa função causará undefined
+// behaviour caso possua um nível com mais de 10000 nós.
 void btree_print(BTreeMap *btree) {
 
-#define Q_SZ 1000
+#define Q_SZ 10000
 
 #define PUSH(val)                   \
     do {                            \

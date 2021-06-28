@@ -17,12 +17,12 @@ typedef enum {
     BTREE_FAIL,
 } BTreeResult;
 
-BTreeResult btree_insert(BTreeMap *btree, int32_t key, uint64_t value);
 BTreeMap btree_new();
 void btree_drop(BTreeMap btree);
 BTreeResult btree_load(BTreeMap *btree, const char *fname);
 BTreeResult btree_create(BTreeMap *btree, const char *fname);
 int64_t btree_get(BTreeMap *btree, uint32_t key);
+BTreeResult btree_insert(BTreeMap *btree, int32_t key, uint64_t value);
 
 bool btree_has_error(BTreeMap *btree);
 void btree_print(BTreeMap *btree);
