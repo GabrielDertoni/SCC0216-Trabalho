@@ -30,28 +30,28 @@ bool update_header_status(char new_val, FILE *fp) {
     return true;
 }
 
-bool update_header_meta(DBMeta meta, FILE *fp) {
+bool update_header_meta(const DBMeta *meta, FILE *fp) {
     position(fp, 0);
     ASSERT(write_header_meta(meta, fp));
     return true;
 }
 
-bool write_header_meta(DBMeta meta, FILE *fp) {
-    ASSERT(fwrite(&meta.status           , sizeof(meta.status)         , 1, fp));
-    ASSERT(fwrite(&meta.byteProxReg      , sizeof(meta.byteProxReg)    , 1, fp));
-    ASSERT(fwrite(&meta.nroRegistros     , sizeof(meta.nroRegistros)   , 1, fp));
-    ASSERT(fwrite(&meta.nroRegRemovidos  , sizeof(meta.nroRegRemovidos), 1, fp));
+bool write_header_meta(const DBMeta *meta, FILE *fp) {
+    ASSERT(fwrite(&meta->status           , sizeof(meta->status)         , 1, fp));
+    ASSERT(fwrite(&meta->byteProxReg      , sizeof(meta->byteProxReg)    , 1, fp));
+    ASSERT(fwrite(&meta->nroRegistros     , sizeof(meta->nroRegistros)   , 1, fp));
+    ASSERT(fwrite(&meta->nroRegRemovidos  , sizeof(meta->nroRegRemovidos), 1, fp));
     return true;
 }
 
-bool write_vehicles_header(DBVehicleHeader header, FILE *fp) {
-    ASSERT(write_header_meta(header.meta, fp));
-    ASSERT(fwrite(&header.descrevePrefixo  , sizeof(header.descrevePrefixo)  , 1, fp));
-    ASSERT(fwrite(&header.descreveData     , sizeof(header.descreveData)     , 1, fp));
-    ASSERT(fwrite(&header.descreveLugares  , sizeof(header.descreveLugares)  , 1, fp));
-    ASSERT(fwrite(&header.descreveLinhas   , sizeof(header.descreveLinhas)   , 1, fp));
-    ASSERT(fwrite(&header.descreveModelo   , sizeof(header.descreveModelo)   , 1, fp));
-    ASSERT(fwrite(&header.descreveCategoria, sizeof(header.descreveCategoria), 1, fp));
+bool write_vehicles_header(const DBVehicleHeader *header, FILE *fp) {
+    ASSERT(write_header_meta(&header->meta, fp));
+    ASSERT(fwrite(&header->descrevePrefixo  , sizeof(header->descrevePrefixo)  , 1, fp));
+    ASSERT(fwrite(&header->descreveData     , sizeof(header->descreveData)     , 1, fp));
+    ASSERT(fwrite(&header->descreveLugares  , sizeof(header->descreveLugares)  , 1, fp));
+    ASSERT(fwrite(&header->descreveLinhas   , sizeof(header->descreveLinhas)   , 1, fp));
+    ASSERT(fwrite(&header->descreveModelo   , sizeof(header->descreveModelo)   , 1, fp));
+    ASSERT(fwrite(&header->descreveCategoria, sizeof(header->descreveCategoria), 1, fp));
     return true;
 }
 
@@ -102,12 +102,12 @@ bool write_vehicle(const Vehicle *vehicle, FILE *fp) {
     return true;
 }
 
-bool write_bus_lines_header(DBBusLineHeader header, FILE *fp) {
-    ASSERT(write_header_meta(header.meta, fp));
-    ASSERT(fwrite(&header.descreveCodigo, sizeof(header.descreveCodigo), 1, fp));
-    ASSERT(fwrite(&header.descreveCartao, sizeof(header.descreveCartao), 1, fp));
-    ASSERT(fwrite(&header.descreveNome  , sizeof(header.descreveNome  ), 1, fp));
-    ASSERT(fwrite(&header.descreveCor   , sizeof(header.descreveCor   ), 1, fp));
+bool write_bus_lines_header(const DBBusLineHeader *header, FILE *fp) {
+    ASSERT(write_header_meta(&header->meta, fp));
+    ASSERT(fwrite(&header->descreveCodigo, sizeof(header->descreveCodigo), 1, fp));
+    ASSERT(fwrite(&header->descreveCartao, sizeof(header->descreveCartao), 1, fp));
+    ASSERT(fwrite(&header->descreveNome  , sizeof(header->descreveNome  ), 1, fp));
+    ASSERT(fwrite(&header->descreveCor   , sizeof(header->descreveCor   ), 1, fp));
     return true;
 }
 

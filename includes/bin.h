@@ -25,19 +25,19 @@
 bool update_header_status(char new_val, FILE *fp);
 
 // Atualiza o cabeçalho meta do arquivo.
-bool update_header_meta(DBMeta meta, FILE *fp);
+bool update_header_meta(const DBMeta *meta, FILE *fp);
 
 // Escreve o cabeçalho de metadados no arquivo.
-bool write_header_meta(DBMeta meta, FILE *fp);
+bool write_header_meta(const DBMeta *meta, FILE *fp);
 
 // Escreve o cabeçalho do arquivo binário de veículo.
-bool write_vehicles_header(DBVehicleHeader header, FILE *fp);
+bool write_vehicles_header(const DBVehicleHeader *header, FILE *fp);
 
 // Escreve um registro de veículo no arquivo.
 bool write_vehicle(const Vehicle *vehicle, FILE *fp);
 
 // Escreve o cabeçalho de linha de ônibus no arquivo.
-bool write_bus_lines_header(DBBusLineHeader header, FILE *fp);
+bool write_bus_lines_header(const DBBusLineHeader *header, FILE *fp);
 
 // Escreve um registro de linha de ônibus no arquivo.
 bool write_bus_line(const BusLine *line, FILE *fp);

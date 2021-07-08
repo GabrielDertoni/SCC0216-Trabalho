@@ -41,8 +41,8 @@
  * ser usada juntamente com `csv_dynamic_field`, caso contrário ela deverá ser
  * usada juntamente com `csv_static_field`.
  */
-#define csv_dynamic_field(parse) (ParseFunc *)parse, (DropFunc *)free
-#define csv_static_field(parse)  (ParseFunc *)parse, (DropFunc *)NULL
+#define csv_dynamic_field(parse) (CSVParseFunc *)parse, (CSVDropFunc *)free
+#define csv_static_field(parse)  (CSVParseFunc *)parse, (CSVDropFunc *)NULL
 
 // Expande no macro `csv_column`.
 #define _csv_column(strct, member, parse, drop) \
@@ -68,10 +68,10 @@ typedef enum {
     CSV_ERR_EOF,
 } CSVResult;
 
-typedef struct Column Column;
+typedef struct CSVColumn CSVColumn;
 
 typedef struct {
-    Column *columns;
+    CSVColumn *columns;
     size_t n_columns;
     size_t curr_line;
     size_t curr_field;
@@ -84,17 +84,17 @@ typedef struct {
     char *error_msg;
 } CSV;
 
-typedef CSVResult (ParseFunc)(CSV *, const char *, void *);
-typedef void (DropFunc)(void *);
-typedef CSVResult (IterFunc)(CSV *, const void *, void *arg);
+typedef CSVResult (CSVParseFunc)(CSV *, const char *, void *);
+typedef void (CSVDropFunc)(void *);
+typedef CSVResult (CSVIterFunc)(CSV *, const void *, void *arg);
 
-struct Column {
-    size_t size;
-    size_t offset;
-    char *name;
-    ParseFunc *parse;
-    DropFunc *drop;
-}; 
+struct CSVColumn {
+  size_t size;
+  size_t offset;
+  char *name;
+  CSVParseFunc *parse;
+  CSVDropFunc *drop;
+};
 
 /**
  * Cria o TAD CSV. Esse tipo precisa ser liberado através da função
@@ -184,7 +184,7 @@ CSVResult csv_close(CSV *csv);
  *         o retorno de todas as execuções de `iter` tenham resultado em sucesso.
  *         Em caso de erro, retorna um erro apropriado.
  */
-CSVResult csv_iterate_rows(CSV *csv, const char *sep, IterFunc *iter, void *arg);
+CSVResult csv_iterate_rows(CSV *csv, const char *sep, CSVIterFunc *iter, void *arg);
 
 /**
  * Lê uma linha do .csv e escreve o resultado em `strct`. Assume que haja um
@@ -215,7 +215,7 @@ CSVResult csv_parse_header(CSV *csv, const char *sep);
  * @param idx - o índice da coluna a ser configurada.
  * @param column - as configurações da coluna gerada através do `csv_column_new`.
  */
-void csv_set_column(CSV *csv, size_t idx, Column column);
+void csv_set_column(CSV *csv, size_t idx, CSVColumn column);
 
 /**
  * Carrega um arquivo csv a partir de seu nome.
@@ -322,7 +322,7 @@ int csv_get_field_index(const CSV *csv, const char *field_name);
  * @param drop - função que libera o tipo lido por `parse`.
  * @return uma nova coluna.
  */
-Column csv_column_new(size_t size, size_t offset, const char *name, ParseFunc *parse, DropFunc *drop);
+CSVColumn csv_column_new(size_t size, size_t offset, const char *name, CSVParseFunc *parse, CSVDropFunc *drop);
 
 /* Outros */
 
