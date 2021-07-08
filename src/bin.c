@@ -255,15 +255,15 @@ void print_bus_line(FILE *out, const DBBusLineRegister *reg, const DBBusLineHead
 }
 
 // Desaloca a memória alocada para as strings categoria e modelo dos veículos
-static void deallocate_vehicle_strings(DBVehicleRegister v){
-    free(v.categoria);
-    free(v.modelo);
+static void drop_vehicle(DBVehicleRegister v){
+    if (v.categoria) free(v.categoria);
+    if (v.modelo) free(v.modelo);
 }
 
 // Desaloca a memória alocada para as strings nomeLinha e corLinha das linhas de ônibus
-static void deallocate_bus_line_strings(DBBusLineRegister b){
-    free(b.nomeLinha);
-    free(b.corLinha);
+static void drop_bus_line(DBBusLineRegister b){
+    if (b.nomeLinha) free(b.nomeLinha);
+    if (b.corLinha) free(b.corLinha);
 }
 
 /*
@@ -410,19 +410,22 @@ bool select_from_vehicle_where(const char *from_file, const char *where_field, c
     }
 
     bool print = (where_field == NULL);
+    bool is_unique_field = where_field && strcmp("prefixo", where_field) == 0;
     DBVehicleRegister reg;
 
     int n_matching = 0;
     while (read_vehicle_register(fp, &reg)){
         if(where_field != NULL && equals_to != NULL)
-            print = check_vehicle_field_equals(&reg, where_field, equals_to);
+            print = reg.removido == '1' && check_vehicle_field_equals(&reg, where_field, equals_to);
 
-        if(reg.removido != '0' && print) {
+        if(print) {
             print_vehicle(stdout, &reg, &header);
             n_matching++;
         }
 
-        deallocate_vehicle_strings(reg);
+        drop_vehicle(reg);
+
+        if (is_unique_field && print) break;
     }
     fclose(fp);
 
@@ -437,7 +440,7 @@ bool select_from_vehicle_where(const char *from_file, const char *where_field, c
 bool select_from_bus_line_where(const char *from_file, const char *where_field, const char *equals_to){
     FILE *fp = fopen(from_file, "rb");
 
-    if(!check_file(fp)) return false;
+    if (!check_file(fp)) return false;
 
     DBBusLineHeader header;
     if (!read_header_bus_line(fp, &header)) {
@@ -447,19 +450,22 @@ bool select_from_bus_line_where(const char *from_file, const char *where_field, 
     }
 
     bool print = (where_field == NULL);
+    bool is_unique_field = where_field && strcmp("codLinha", where_field) == 0;
     DBBusLineRegister reg;
 
     int n_matching = 0;
     while (read_bus_line_register(fp, &reg)){
-        if(where_field != NULL && equals_to != NULL)
-            print = check_bus_line_field_equals(&reg, where_field, equals_to);
+        if (where_field != NULL && equals_to != NULL)
+            print = reg.removido == '1' && check_bus_line_field_equals(&reg, where_field, equals_to);
 
-        if(reg.removido != '0' && print) {
+        if (print) {
             print_bus_line(stdout, &reg, &header);
             n_matching++;
         }
 
-        deallocate_bus_line_strings(reg);
+        drop_bus_line(reg);
+
+        if (is_unique_field && print) break;
     }
     fclose(fp);
 
