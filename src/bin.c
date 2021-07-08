@@ -405,7 +405,7 @@ bool select_from_vehicle_where(const char *from_file, const char *where_field, c
     }
     fclose(fp);
 
-    if (n_matching > 0) {
+    if (n_matching == 0) {
         printf(NO_REGISTER);
         return false;
     }
@@ -442,7 +442,7 @@ bool select_from_bus_line_where(const char *from_file, const char *where_field, 
     }
     fclose(fp);
 
-    if (n_matching > 0) {
+    if (n_matching == 0) {
         printf(NO_REGISTER);
         return false;
     }
