@@ -137,6 +137,22 @@ $(TEST_DIR)/test_%: $$(TEST)/test_%.c $$(wildcard $$(SRC)/%.c) | $(TEST_DIR)
 	@$(call PRINT_COMPILE, $<, $@)
 	@$(CC) -g -DDEBUG $(CFLAGS) $^ $(TEST_INCLUDE) -o $@ -I $(TEST) -I $(HDR)
 
+compile_commands:
+	@$(MAKE) -s compile_commands_echo | json_pp -json_opt relaxed,pretty > compile_commands.json
+
+compile_commands_echo:
+	@echo "["
+	@$(MAKE) -s compile_commands_generate
+	@echo "]"
+
+compile_commands_generate: $(patsubst $(SRC)/%.c, compile_commands-%, $(SRCS))
+compile_commands-%: $(SRC)/%.c
+	@echo "{                                                               \
+				\"directory\": \"$$(pwd)\",                                \
+				\"command\": \"$(CC) $(CFLAGS) -c $< -o $(OBJ_DIR)/$*.o -I$(HDR)\", \
+				\"file\": \"$<\"                                           \
+		   },"
+
 # Removes all make generated directories and files
 clean:
 	rm -rf $(TARGET_DIR)
