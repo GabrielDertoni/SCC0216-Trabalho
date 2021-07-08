@@ -280,16 +280,24 @@ bool read_vehicle_register(FILE *fp, DBVehicleRegister *reg) {
     ASSERT(fread(&reg->quantidadeLugares, 4, 1, fp));
     ASSERT(fread(&reg->codLinha, 4, 1, fp));
     ASSERT(fread(&reg->tamanhoModelo, 4, 1, fp));
-    reg->modelo = malloc(reg->tamanhoModelo + 1);
-    reg->modelo[reg->tamanhoModelo] = '\0';
-    if (reg->tamanhoModelo > 0)
+
+    reg->modelo = NULL;
+
+    if (reg->tamanhoModelo > 0) {
+        reg->modelo = (char *)malloc((reg->tamanhoModelo + 1) * sizeof(char));
         ASSERT(fread(reg->modelo, reg->tamanhoModelo, 1, fp));
+        reg->modelo[reg->tamanhoModelo] = '\0';
+    }
 
     ASSERT(fread(&reg->tamanhoCategoria, 4, 1, fp));
-    reg->categoria = malloc(reg->tamanhoCategoria + 1);
-    reg->categoria[reg->tamanhoCategoria] = '\0';
-    if (reg->tamanhoCategoria > 0)
+
+    reg->categoria = NULL;
+
+    if (reg->tamanhoCategoria > 0) {
+        reg->categoria = (char *)malloc((reg->tamanhoCategoria + 1) * sizeof(char));
         ASSERT(fread(reg->categoria, reg->tamanhoCategoria, 1, fp));
+        reg->categoria[reg->tamanhoCategoria] = '\0';
+    }
 
     return true;
 }
@@ -306,16 +314,24 @@ bool read_bus_line_register(FILE *fp, DBBusLineRegister *reg){
     ASSERT(fread(&reg->codLinha, 4, 1, fp));
     ASSERT(fread(&reg->aceitaCartao, 1, 1, fp));
     ASSERT(fread(&reg->tamanhoNome, 4, 1, fp));
-    reg->nomeLinha = malloc(reg->tamanhoNome + 1);
-    reg->nomeLinha[reg->tamanhoNome] = '\0';
-    if (reg->tamanhoNome > 0)
+
+    reg->nomeLinha = NULL;
+
+    if (reg->tamanhoNome > 0) {
+        reg->nomeLinha = (char *)malloc((reg->tamanhoNome + 1) * sizeof(char));
         ASSERT(fread(reg->nomeLinha, reg->tamanhoNome, 1, fp));
+        reg->nomeLinha[reg->tamanhoNome] = '\0';
+    }
 
     ASSERT(fread(&reg->tamanhoCor, 4, 1, fp));
-    reg->corLinha = malloc(reg->tamanhoCor + 1);
-    reg->corLinha[reg->tamanhoCor] = '\0';
-    if (reg->tamanhoCor > 0)
+
+    reg->corLinha = NULL;
+
+    if (reg->tamanhoCor > 0) {
+        reg->corLinha = malloc(reg->tamanhoCor + 1);
         ASSERT(fread(reg->corLinha, reg->tamanhoCor, 1, fp));
+        reg->corLinha[reg->tamanhoCor] = '\0';
+    }
 
     return true;
 }
