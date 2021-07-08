@@ -184,19 +184,24 @@ bool read_header_bus_line(FILE *fp, DBBusLineHeader *header){
 }
 
 // Imprime a data de entrada de um veículo na frota no formato 'DD de texto(MM) de AAAA'
-static void print_date(char date[10], FILE *out, char *print) {
+static void print_date(const char (*date)[10], FILE *out, const char (*print)[35]) {
     const char *months[12] = { "janeiro", "fevereiro", "março", "abril", "maio",
                                "junho", "julho", "agosto", "setembro", "outubro",
                                "novembro", "dezembro" };
-    char *parse_ptr = date;
+
+    // Copia `date` para garantir `const` ao parâmetro ao usar `strsep`.
+    char date_cpy[10];
+    memcpy(date_cpy, *date, sizeof(*date));
+
+    char *parse_ptr = date_cpy;
     char *year = strsep(&parse_ptr, "-");
     char *month = strsep(&parse_ptr, "-");
     char *day = strsep(&parse_ptr, "-");
-    fprintf(out, "%.35s: %.2s de %s de %s\n", print, day, months[atoi(month)-1], year);
+    fprintf(out, "%.35s: %.2s de %s de %s\n", *print, day, months[atoi(month)-1], year);
 }
 
 // Imprime as informações de busca do arquivo binário de veículo
-void print_vehicle(FILE *out, DBVehicleRegister *reg, DBVehicleHeader *header){
+void print_vehicle(FILE *out, const DBVehicleRegister *reg, const DBVehicleHeader *header){
     fprintf(out, "%.18s: %.5s\n", header->descrevePrefixo, reg->prefixo);
 
     if(reg->tamanhoModelo != 0)
@@ -210,7 +215,7 @@ void print_vehicle(FILE *out, DBVehicleRegister *reg, DBVehicleHeader *header){
         fprintf(out, "%.20s: %s\n", header->descreveCategoria, NO_VALUE);
 
     if(strlen(reg->data) != 0)
-        print_date(reg->data, out, header->descreveData);
+        print_date(&reg->data, out, &header->descreveData);
     else
         fprintf(out, "%.35s: %s\n", header->descreveData, NO_VALUE);
 
@@ -221,7 +226,7 @@ void print_vehicle(FILE *out, DBVehicleRegister *reg, DBVehicleHeader *header){
 }
 
 // Imprime as informações de busca do arquivo binário das linhas de ônibus
-void print_bus_line(FILE *out, DBBusLineRegister *reg, DBBusLineHeader *header){
+void print_bus_line(FILE *out, const DBBusLineRegister *reg, const DBBusLineHeader *header){
     fprintf(out, "%.15s: %d\n", header->descreveCodigo, reg->codLinha);
     if(reg->tamanhoNome != 0)
         fprintf(out, "%.13s: %s\n", header->descreveNome, reg->nomeLinha);
