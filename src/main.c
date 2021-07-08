@@ -1,10 +1,16 @@
+/*
+ * Grupo:
+ *    Gabriel da Cunha Dertoni - 11795717
+ */
+
+
 #include <stdio.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
 
 #include <common.h>
-#include <parsing.h>
+#include <csv_to_bin.h>
 #include <utils.h>
 #include <csv.h>
 #include <index.h>

@@ -30,28 +30,28 @@ bool update_header_status(char new_val, FILE *fp) {
     return true;
 }
 
-bool update_header_meta(DBMeta meta, FILE *fp) {
+bool update_header_meta(const DBMeta *meta, FILE *fp) {
     position(fp, 0);
     ASSERT(write_header_meta(meta, fp));
     return true;
 }
 
-bool write_header_meta(DBMeta meta, FILE *fp) {
-    ASSERT(fwrite(&meta.status           , sizeof(meta.status)         , 1, fp));
-    ASSERT(fwrite(&meta.byteProxReg      , sizeof(meta.byteProxReg)    , 1, fp));
-    ASSERT(fwrite(&meta.nroRegistros     , sizeof(meta.nroRegistros)   , 1, fp));
-    ASSERT(fwrite(&meta.nroRegRemovidos  , sizeof(meta.nroRegRemovidos), 1, fp));
+bool write_header_meta(const DBMeta *meta, FILE *fp) {
+    ASSERT(fwrite(&meta->status           , sizeof(meta->status)         , 1, fp));
+    ASSERT(fwrite(&meta->byteProxReg      , sizeof(meta->byteProxReg)    , 1, fp));
+    ASSERT(fwrite(&meta->nroRegistros     , sizeof(meta->nroRegistros)   , 1, fp));
+    ASSERT(fwrite(&meta->nroRegRemovidos  , sizeof(meta->nroRegRemovidos), 1, fp));
     return true;
 }
 
-bool write_vehicles_header(DBVehicleHeader header, FILE *fp) {
-    ASSERT(write_header_meta(header.meta, fp));
-    ASSERT(fwrite(&header.descrevePrefixo  , sizeof(header.descrevePrefixo)  , 1, fp));
-    ASSERT(fwrite(&header.descreveData     , sizeof(header.descreveData)     , 1, fp));
-    ASSERT(fwrite(&header.descreveLugares  , sizeof(header.descreveLugares)  , 1, fp));
-    ASSERT(fwrite(&header.descreveLinhas   , sizeof(header.descreveLinhas)   , 1, fp));
-    ASSERT(fwrite(&header.descreveModelo   , sizeof(header.descreveModelo)   , 1, fp));
-    ASSERT(fwrite(&header.descreveCategoria, sizeof(header.descreveCategoria), 1, fp));
+bool write_vehicles_header(const DBVehicleHeader *header, FILE *fp) {
+    ASSERT(write_header_meta(&header->meta, fp));
+    ASSERT(fwrite(&header->descrevePrefixo  , sizeof(header->descrevePrefixo)  , 1, fp));
+    ASSERT(fwrite(&header->descreveData     , sizeof(header->descreveData)     , 1, fp));
+    ASSERT(fwrite(&header->descreveLugares  , sizeof(header->descreveLugares)  , 1, fp));
+    ASSERT(fwrite(&header->descreveLinhas   , sizeof(header->descreveLinhas)   , 1, fp));
+    ASSERT(fwrite(&header->descreveModelo   , sizeof(header->descreveModelo)   , 1, fp));
+    ASSERT(fwrite(&header->descreveCategoria, sizeof(header->descreveCategoria), 1, fp));
     return true;
 }
 
@@ -102,12 +102,12 @@ bool write_vehicle(const Vehicle *vehicle, FILE *fp) {
     return true;
 }
 
-bool write_bus_lines_header(DBBusLineHeader header, FILE *fp) {
-    ASSERT(write_header_meta(header.meta, fp));
-    ASSERT(fwrite(&header.descreveCodigo, sizeof(header.descreveCodigo), 1, fp));
-    ASSERT(fwrite(&header.descreveCartao, sizeof(header.descreveCartao), 1, fp));
-    ASSERT(fwrite(&header.descreveNome  , sizeof(header.descreveNome  ), 1, fp));
-    ASSERT(fwrite(&header.descreveCor   , sizeof(header.descreveCor   ), 1, fp));
+bool write_bus_lines_header(const DBBusLineHeader *header, FILE *fp) {
+    ASSERT(write_header_meta(&header->meta, fp));
+    ASSERT(fwrite(&header->descreveCodigo, sizeof(header->descreveCodigo), 1, fp));
+    ASSERT(fwrite(&header->descreveCartao, sizeof(header->descreveCartao), 1, fp));
+    ASSERT(fwrite(&header->descreveNome  , sizeof(header->descreveNome  ), 1, fp));
+    ASSERT(fwrite(&header->descreveCor   , sizeof(header->descreveCor   ), 1, fp));
     return true;
 }
 
@@ -184,19 +184,24 @@ bool read_header_bus_line(FILE *fp, DBBusLineHeader *header){
 }
 
 // Imprime a data de entrada de um veículo na frota no formato 'DD de texto(MM) de AAAA'
-static void print_date(char date[10], FILE *out, char *print) {
+static void print_date(const char (*date)[10], FILE *out, const char (*print)[35]) {
     const char *months[12] = { "janeiro", "fevereiro", "março", "abril", "maio",
                                "junho", "julho", "agosto", "setembro", "outubro",
                                "novembro", "dezembro" };
-    char *parse_ptr = date;
+
+    // Copia `date` para garantir `const` ao parâmetro ao usar `strsep`.
+    char date_cpy[10];
+    memcpy(date_cpy, *date, sizeof(*date));
+
+    char *parse_ptr = date_cpy;
     char *year = strsep(&parse_ptr, "-");
     char *month = strsep(&parse_ptr, "-");
     char *day = strsep(&parse_ptr, "-");
-    fprintf(out, "%.35s: %.2s de %s de %s\n", print, day, months[atoi(month)-1], year);
+    fprintf(out, "%.35s: %.2s de %s de %s\n", *print, day, months[atoi(month)-1], year);
 }
 
 // Imprime as informações de busca do arquivo binário de veículo
-void print_vehicle(FILE *out, DBVehicleRegister *reg, DBVehicleHeader *header){
+void print_vehicle(FILE *out, const DBVehicleRegister *reg, const DBVehicleHeader *header){
     fprintf(out, "%.18s: %.5s\n", header->descrevePrefixo, reg->prefixo);
 
     if(reg->tamanhoModelo != 0)
@@ -210,7 +215,7 @@ void print_vehicle(FILE *out, DBVehicleRegister *reg, DBVehicleHeader *header){
         fprintf(out, "%.20s: %s\n", header->descreveCategoria, NO_VALUE);
 
     if(strlen(reg->data) != 0)
-        print_date(reg->data, out, header->descreveData);
+        print_date(&reg->data, out, &header->descreveData);
     else
         fprintf(out, "%.35s: %s\n", header->descreveData, NO_VALUE);
 
@@ -221,7 +226,7 @@ void print_vehicle(FILE *out, DBVehicleRegister *reg, DBVehicleHeader *header){
 }
 
 // Imprime as informações de busca do arquivo binário das linhas de ônibus
-void print_bus_line(FILE *out, DBBusLineRegister *reg, DBBusLineHeader *header){
+void print_bus_line(FILE *out, const DBBusLineRegister *reg, const DBBusLineHeader *header){
     fprintf(out, "%.15s: %d\n", header->descreveCodigo, reg->codLinha);
     if(reg->tamanhoNome != 0)
         fprintf(out, "%.13s: %s\n", header->descreveNome, reg->nomeLinha);
@@ -275,16 +280,24 @@ bool read_vehicle_register(FILE *fp, DBVehicleRegister *reg) {
     ASSERT(fread(&reg->quantidadeLugares, 4, 1, fp));
     ASSERT(fread(&reg->codLinha, 4, 1, fp));
     ASSERT(fread(&reg->tamanhoModelo, 4, 1, fp));
-    reg->modelo = malloc(reg->tamanhoModelo + 1);
-    reg->modelo[reg->tamanhoModelo] = '\0';
-    if (reg->tamanhoModelo > 0)
+
+    reg->modelo = NULL;
+
+    if (reg->tamanhoModelo > 0) {
+        reg->modelo = (char *)malloc((reg->tamanhoModelo + 1) * sizeof(char));
         ASSERT(fread(reg->modelo, reg->tamanhoModelo, 1, fp));
+        reg->modelo[reg->tamanhoModelo] = '\0';
+    }
 
     ASSERT(fread(&reg->tamanhoCategoria, 4, 1, fp));
-    reg->categoria = malloc(reg->tamanhoCategoria + 1);
-    reg->categoria[reg->tamanhoCategoria] = '\0';
-    if (reg->tamanhoCategoria > 0)
+
+    reg->categoria = NULL;
+
+    if (reg->tamanhoCategoria > 0) {
+        reg->categoria = (char *)malloc((reg->tamanhoCategoria + 1) * sizeof(char));
         ASSERT(fread(reg->categoria, reg->tamanhoCategoria, 1, fp));
+        reg->categoria[reg->tamanhoCategoria] = '\0';
+    }
 
     return true;
 }
@@ -301,16 +314,24 @@ bool read_bus_line_register(FILE *fp, DBBusLineRegister *reg){
     ASSERT(fread(&reg->codLinha, 4, 1, fp));
     ASSERT(fread(&reg->aceitaCartao, 1, 1, fp));
     ASSERT(fread(&reg->tamanhoNome, 4, 1, fp));
-    reg->nomeLinha = malloc(reg->tamanhoNome + 1);
-    reg->nomeLinha[reg->tamanhoNome] = '\0';
-    if (reg->tamanhoNome > 0)
+
+    reg->nomeLinha = NULL;
+
+    if (reg->tamanhoNome > 0) {
+        reg->nomeLinha = (char *)malloc((reg->tamanhoNome + 1) * sizeof(char));
         ASSERT(fread(reg->nomeLinha, reg->tamanhoNome, 1, fp));
+        reg->nomeLinha[reg->tamanhoNome] = '\0';
+    }
 
     ASSERT(fread(&reg->tamanhoCor, 4, 1, fp));
-    reg->corLinha = malloc(reg->tamanhoCor + 1);
-    reg->corLinha[reg->tamanhoCor] = '\0';
-    if (reg->tamanhoCor > 0)
+
+    reg->corLinha = NULL;
+
+    if (reg->tamanhoCor > 0) {
+        reg->corLinha = malloc(reg->tamanhoCor + 1);
         ASSERT(fread(reg->corLinha, reg->tamanhoCor, 1, fp));
+        reg->corLinha[reg->tamanhoCor] = '\0';
+    }
 
     return true;
 }

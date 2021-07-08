@@ -1,8 +1,11 @@
 
+.vimsess
 target/
 **.bin
 Casos de Teste/
 casos
 *.zip
 compile_flags.txt
+compile_commands.json
+.clangd
 src/maybe_useless.c

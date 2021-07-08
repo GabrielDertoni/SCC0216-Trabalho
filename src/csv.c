@@ -31,7 +31,7 @@ static size_t instances_count = 0;
 
 static void free_row(CSV *csv, void *value) {
     for (int i = 0; i < csv->n_columns; i++) {
-        Column col = csv->columns[i];
+        CSVColumn col = csv->columns[i];
 
         if (col.drop)
             col.drop(*(void **)(value + col.offset));
@@ -118,7 +118,7 @@ CSV csv_new(size_t elsize, size_t n_columns) {
     instances_count++;
 
     return (CSV) {
-        .columns    = (Column *)calloc(n_columns, sizeof(Column)),
+        .columns    = (CSVColumn *)calloc(n_columns, sizeof(CSVColumn)),
         .n_columns  = n_columns,
         .curr_line  = 0,
         .curr_field = 0,
@@ -161,7 +161,7 @@ void csv_drop(CSV csv) {
     }
 }
 
-void csv_set_column(CSV *csv, size_t col_idx, Column column) {
+void csv_set_column(CSV *csv, size_t col_idx, CSVColumn column) {
     if (col_idx >= csv->n_columns) {
         fprintf(stderr, "csv_error: column index %zu is out of bounds for CSV.\n", col_idx);
         exit(1);
@@ -178,7 +178,7 @@ static CSVResult csv_parse_row_into(CSV *csv, char *input, const char *sep, void
     CSVResult status = CSV_OK;
 
     while (parse_ptr != NULL && status == CSV_OK && i < csv->n_columns) {
-        Column col = csv->columns[i];
+        CSVColumn col = csv->columns[i];
         parse_field = fieldsep(&parse_ptr, sep);
 
         void *field = row_values + col.offset;
@@ -205,7 +205,7 @@ static CSVResult csv_parse_row_into(CSV *csv, char *input, const char *sep, void
 
     if (status != CSV_OK) {
         for (int j = 0; j < i; j++) {
-            Column col = csv->columns[j];
+            CSVColumn col = csv->columns[j];
 
             if (col.drop) col.drop(*(void **)(row_values + col.offset));
         }
@@ -300,7 +300,7 @@ CSVResult csv_parse_header(CSV *csv, const char *sep) {
 
     int i;
     for (i = 0; parse_ptr != NULL && status == CSV_OK && i < csv->n_columns; i++) {
-        Column *col = &csv->columns[i];
+        CSVColumn *col = &csv->columns[i];
 
         field = fieldsep(&parse_ptr, sep);
 
@@ -338,7 +338,7 @@ CSVResult csv_parse_next_row(CSV *csv, void *strct, const char *sep) {
     return csv_parse_row_into(csv, line, sep, strct);
 }
 
-CSVResult csv_iterate_rows(CSV *csv, const char *sep, IterFunc *iter, void *arg) {
+CSVResult csv_iterate_rows(CSV *csv, const char *sep, CSVIterFunc *iter, void *arg) {
     // Using a VLA here might not be the best solution, but it should be faster
     // than a heap allocation. Has to be aligned to the biggest alignment so
     // that no words or types are broken in half.
@@ -380,7 +380,7 @@ void csv_print_header(CSV *csv) {
         return;
     }
 
-    Column col = csv->columns[0];
+    CSVColumn col = csv->columns[0];
     printf("%s", col.name ? col.name : "[undefined]");
 
     for (int i = 1; i < csv->n_columns; i++) {
@@ -428,14 +428,14 @@ const char *csv_get_col_name(const CSV *csv, int idx) {
 
 size_t csv_row_count(const CSV *csv) { return csv->n_rows; }
 
-Column csv_column_new(
+CSVColumn csv_column_new(
     size_t size,
     size_t offset,
     const char *name,
-    ParseFunc *parse,
-    DropFunc *drop
+    CSVParseFunc *parse,
+    CSVDropFunc *drop
 ) {
-    return (Column) {
+    return (CSVColumn) {
         .size   = size,
         .offset = offset,
         .name   = name ? strdup(name) : NULL,

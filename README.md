@@ -27,13 +27,5 @@ Makefile. Por padrão essa localização é `target/test`.
 Para somente compilar os testes mas não rodar nenhum, use `make build_tests`.
 
 ## TODO
-- Renomear `Column` para `CSVColumn`.
-- Mudar de `parsing.h` para `csv_to_bin.h`?
 - Testar mudanças no código do trabalho 1 contra os casos de trabalho 1 para
     verificar se tudo continua funcionando corretamente.
-- `veiculo1.bin` parece ter o número errado de registros em seu cabeçalho,
-    verificar.
-- Alocação de memória desnecessária quando lendo uma string de tamanho 0 no
-    binário de veículo ou de linha de ônibus.
-- Adicionar nomes e números usp no cabeçalho da `main.c`
-- Adicionar `const` a ponteiros que nunca precisam ser modificados no `bin.c`.
