@@ -400,6 +400,7 @@ static bool csv_append_to_bin_and_index(
            "Error: could not write meta header to file '%s'.\n", bin_fname);
 
     fclose(fp);
+    btree_drop(btree);
 
     return true;
 

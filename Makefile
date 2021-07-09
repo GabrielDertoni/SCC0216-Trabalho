@@ -153,9 +153,22 @@ compile_commands-%: $(SRC)/%.c
 				\"file\": \"$<\"                                           \
 		   },"
 
+utils: $(patsubst utils/%.c, $(TARGET_DIR)/utils/%, $(wildcard utils/*.c))
+
+$(TARGET_DIR)/utils/binario_tela: utils/binario_tela.c $(OBJ_DIR)/external.o | $(TARGET_DIR)/utils
+	@$(call PRINT_COMPILE, $<, $@)
+	@$(CC) $(CFLAGS) $^ -o $@ -I $(HDR)
+
+$(TARGET_DIR)/utils:
+	@mkdir -p $(TARGET_DIR)/utils
+
+util/%: $(TARGET_DIR)/utils/%
+	@./$< $(ARGS)
+
 # Removes all make generated directories and files
 clean:
 	rm -rf $(TARGET_DIR)
+	rm -rf 
 
 # Creating directories
 $(OBJ_DIR):
