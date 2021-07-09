@@ -51,36 +51,36 @@ bool read_header_bus_line(FILE *fp, DBBusLineHeader *header);
 // Lê o cabeçalho de um arquivo binário que contém os registros de veículo
 bool read_header_vehicle(FILE *fp, DBVehicleHeader *header);
 
-/*
+/**
  * Lê os registros de um arquivo binário de veículos
  * @param fp - ponteiro do arquivo binário
  * @param reg - ponteiro de DBVehicleRegister
  * @return 'true' se for lido com sucesso 'false' se houver algum erro
-*/ 
+ */ 
 bool read_vehicle_register(FILE *fp, DBVehicleRegister *reg);
 
-/*
+/**
  * Lê os registros de um arquivo binário de linhas de ônibus
  * @param fp - ponteiro do arquivo binário
  * @param reg - ponteiro de DBBusLineRegister
  * @return 'true' se for lido com sucesso 'false' se houver algum erro
-*/
+ */
 bool read_bus_line_register(FILE *fp, DBBusLineRegister *reg);
 
-/* 
-  * Seleciona os dados de uma tabela que contém os arquivos veículos
-  * @param from_file - caminho do arquivo binário que contém os veículos
-  * @param where_field - nome do campo a ser buscado na tabela -> NULL exibe todos os valores
-  * @param equals_to - valor do campo a ser buscado na tabela -> NULL exibe todos os valores
-*/
+/**
+ * Seleciona os dados de uma tabela que contém os arquivos veículos
+ * @param from_file - caminho do arquivo binário que contém os veículos
+ * @param where_field - nome do campo a ser buscado na tabela -> NULL exibe todos os valores
+ * @param equals_to - valor do campo a ser buscado na tabela -> NULL exibe todos os valores
+ */
 bool select_from_vehicle_where(const char *from_file, const char *where_field, const char *equals_to);
 
-/* 
-  * Seleciona os dados de uma tabela que contém os arquivos das linhas de ônibus
-  * @param from_file - caminho do arquivo binário que contém as linhas de ônibus
-  * @param where_field - nome do campo a ser buscado na tabela -> NULL exibe todos os valores
-  * @param equals_to - valor do campo a ser buscado na tabela -> NULL exibe todos os valores
-*/
+/**
+ * Seleciona os dados de uma tabela que contém os arquivos das linhas de ônibus
+ * @param from_file - caminho do arquivo binário que contém as linhas de ônibus
+ * @param where_field - nome do campo a ser buscado na tabela -> NULL exibe todos os valores
+ * @param equals_to - valor do campo a ser buscado na tabela -> NULL exibe todos os valores
+ */
 bool select_from_bus_line_where(const char *from_file, const char *where_campo, const char *where_valor);
 
 // Imprime as informações de busca do arquivo binário das linhas de ônibus
@@ -88,5 +88,11 @@ void print_bus_line(FILE *out, const DBBusLineRegister *reg, const DBBusLineHead
 
 // Imprime as informações de busca do arquivo binário de veículo
 void print_vehicle(FILE *out, const DBVehicleRegister *reg, const DBVehicleHeader *header);
+
+// Desaloca a memória alocada para as strings categoria e modelo dos veículos
+void vehicle_drop(DBVehicleRegister v);
+
+// Desaloca a memória alocada para as strings nomeLinha e corLinha das linhas de ônibus
+void bus_line_drop(DBBusLineRegister b);
 
 #endif

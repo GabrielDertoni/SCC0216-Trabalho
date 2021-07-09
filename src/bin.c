@@ -255,13 +255,13 @@ void print_bus_line(FILE *out, const DBBusLineRegister *reg, const DBBusLineHead
 }
 
 // Desaloca a memória alocada para as strings categoria e modelo dos veículos
-static void drop_vehicle(DBVehicleRegister v){
+void vehicle_drop(DBVehicleRegister v){
     if (v.categoria) free(v.categoria);
     if (v.modelo) free(v.modelo);
 }
 
 // Desaloca a memória alocada para as strings nomeLinha e corLinha das linhas de ônibus
-static void drop_bus_line(DBBusLineRegister b){
+void bus_line_drop(DBBusLineRegister b){
     if (b.nomeLinha) free(b.nomeLinha);
     if (b.corLinha) free(b.corLinha);
 }
@@ -423,7 +423,7 @@ bool select_from_vehicle_where(const char *from_file, const char *where_field, c
             n_matching++;
         }
 
-        drop_vehicle(reg);
+        vehicle_drop(reg);
 
         if (is_unique_field && print) break;
     }
@@ -463,7 +463,7 @@ bool select_from_bus_line_where(const char *from_file, const char *where_field, 
             n_matching++;
         }
 
-        drop_bus_line(reg);
+        bus_line_drop(reg);
 
         if (is_unique_field && print) break;
     }
