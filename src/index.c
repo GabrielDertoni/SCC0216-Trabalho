@@ -18,9 +18,8 @@
 bool index_vehicle_create(const char *bin_fname, const char *index_fname) {
     BTreeMap btree = btree_new();
 
-    bool ok = true;
+    bool ok = false;
     FILE *bin_fp = fopen(bin_fname, "rb");
-
     ASSERT(bin_fp);
     ASSERT(ok = btree_create(&btree, index_fname) == BTREE_OK);
 
@@ -59,11 +58,13 @@ teardown:
         }
 #else
         printf(ERROR_FOUND);
+        // printf("ok: %d\n", ok);
 #endif
     }
 
     btree_drop(btree);
-    fclose(bin_fp);
+    if(bin_fp)
+        fclose(bin_fp);
     return ok;
 }
 
@@ -279,7 +280,6 @@ static bool csv_append_to_bin_and_index(
 #endif
         return false;
     }
-
     BTreeMap btree = btree_new();
 
 #ifdef DEBUG
