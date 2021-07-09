@@ -20,6 +20,7 @@ bool index_vehicle_create(const char *bin_fname, const char *index_fname) {
 
     bool ok = false;
     FILE *bin_fp = fopen(bin_fname, "rb");
+
     ASSERT(bin_fp);
     ASSERT(ok = btree_create(&btree, index_fname) == BTREE_OK);
 
@@ -58,13 +59,13 @@ teardown:
         }
 #else
         printf(ERROR_FOUND);
-        // printf("ok: %d\n", ok);
 #endif
     }
 
     btree_drop(btree);
     if(bin_fp)
         fclose(bin_fp);
+
     return ok;
 }
 
@@ -111,7 +112,9 @@ teardown:
     }
 
     btree_drop(btree);
-    fclose(bin_fp);
+    if (bin_fp)
+        fclose(bin_fp);
+
     return ok;
 }
 
