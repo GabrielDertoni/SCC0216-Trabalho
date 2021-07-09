@@ -25,6 +25,7 @@ int64_t btree_get(BTreeMap *btree, int32_t key);
 BTreeResult btree_insert(BTreeMap *btree, int32_t key, uint64_t value);
 
 bool btree_has_error(BTreeMap *btree);
+const char *btree_get_error(BTreeMap *btree);
 void btree_print(BTreeMap *btree);
 
 #endif

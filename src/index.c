@@ -235,8 +235,9 @@ static CSVResult vehicle_index_row_iterator(CSV *csv, const Vehicle *vehicle, It
         // precisamos desse cast.
         int32_t hash = convertePrefixo((char *)vehicle->prefixo);
 
-        if (!btree_insert(args->btree, hash, offset)) {
-            csv_error(csv, "failed to insert vehicle register in index");
+        if (btree_insert(args->btree, hash, offset) != BTREE_OK) {
+            csv_error(csv, "failed to insert vehicle register in index: %s",
+                      btree_get_error(args->btree));
             return CSV_ERR_OTHER;
         }
     }
@@ -257,8 +258,9 @@ static CSVResult bus_line_index_row_iterator(CSV *csv, const BusLine *bus_line, 
         args->reg_count++;
 
         int32_t codLinha = (int)strtol(bus_line->codLinha, NULL, 10);
-        if (!btree_insert(args->btree, codLinha, offset)) {
-            csv_error(csv, "failed to insert bus line register in index");
+        if (btree_insert(args->btree, codLinha, offset) != BTREE_OK) {
+            csv_error(csv, "failed to insert bus line register in index: %s",
+                      btree_get_error(args->btree));
             return CSV_ERR_OTHER;
         }
     }

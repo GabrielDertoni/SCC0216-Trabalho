@@ -185,6 +185,10 @@ bool btree_has_error(BTreeMap *btree) {
     return btree->error_msg;
 }
 
+const char *btree_get_error(BTreeMap *btree) {
+    return btree->error_msg;
+}
+
 static int key_position(Node node, uint32_t key) {
     int i;
     for (i = 0; i < node.len && key > node.entries[i].key; i++);
