@@ -36,7 +36,7 @@ bool index_vehicle_create(const char *bin_fname, const char *index_fname) {
     for (int i = 0; read_vehicle_register(bin_fp, &reg); i++){
 
         if (reg.removido == '1') {
-            uint32_t hash = convertePrefixo(reg.prefixo);
+            int32_t hash = convertePrefixo(reg.prefixo);
             ASSERT(ok = btree_insert(&btree, hash, offset) == BTREE_OK);
         }
 

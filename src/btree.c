@@ -218,7 +218,7 @@ static int64_t get(BTreeMap *btree, Node node, uint32_t key) {
     return -1;
 }
 
-int64_t btree_get(BTreeMap *btree, uint32_t key) {
+int64_t btree_get(BTreeMap *btree, int32_t key) {
     if (btree->rrn_root < 0) {
         return -1;
     }

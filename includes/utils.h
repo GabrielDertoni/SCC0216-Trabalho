@@ -1,6 +1,8 @@
 #ifndef UTILS_H
 #define UTILS_H
 
+#include <stdio.h>
+
 char *alloc_sprintf(const char *format, ...);
 char *alloc_vsprintf(const char *format, va_list ap);
 
