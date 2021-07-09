@@ -17,12 +17,6 @@
 // número ímpar.
 #define CAPACITY 5
 
-#define ASSERT_OK(val) \
-    do { \
-        CSVResult __tmp = (val); \
-        if (__tmp != CSV_OK) return __tmp; \
-    } while(0)
-
 #define ASSERT(expr) \
     if (!(expr)) return false
 
