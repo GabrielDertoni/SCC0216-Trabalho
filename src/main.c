@@ -1,6 +1,7 @@
 /*
  * Grupo:
  *    Gabriel da Cunha Dertoni - 11795717
+ *    Pedro Afonso Perez Chagas - 7777970
  */
 
 
@@ -18,6 +19,7 @@
 #include <bin.h>
 #include <external.h>
 
+// Enum contendo os valores de cada operacao implementada no trabalho
 typedef enum {
     OP_CREATE_TABLE_VEHICLE       =  1,
     OP_CREATE_TABLE_BUS_LINE      =  2,
@@ -34,15 +36,6 @@ typedef enum {
     OP_INSERT_AND_INDEX_VEHICLE   = 13,
     OP_INSERT_AND_INDEX_BUS_LINE  = 14,
 } Op;
-
-void test(const char *fname) {
-    BTreeMap btree = btree_new();
-    btree_load(&btree, fname);
-
-    btree_print(&btree);
-
-    btree_drop(btree);
-}
 
 int main(void){
     int operacao;
