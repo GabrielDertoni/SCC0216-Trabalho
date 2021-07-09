@@ -34,14 +34,13 @@ bool index_vehicle_create(const char *bin_fname, const char *index_fname) {
     ASSERT(ok = read_header_vehicle(bin_fp, &header));
 
     DBVehicleRegister reg;
-    // TODO: Por algum motivo usar `total_registers` não funciona. Talvez um
-    //       erro com o caso de teste?
-    // uint32_t total_register = header.meta.nroRegistros + header.meta.nroRegRemovidos;
 
+    uint32_t total_register = header.meta.nroRegistros + header.meta.nroRegRemovidos;
     uint64_t offset = ftell(bin_fp);
 
     // Le todos os registros de veiculos do arquivo binario e se nao estiver marcado como removido os insere na arvore-B
-    for (int i = 0; read_vehicle_register(bin_fp, &reg); i++){
+    for (int i = 0; i < total_register; i++){
+        ASSERT(ok = read_vehicle_register(bin_fp, &reg));
 
         if (reg.removido == '1') {
             int32_t hash = convertePrefixo(reg.prefixo);
@@ -95,11 +94,13 @@ bool index_bus_line_create(const char *bin_fname, const char *index_fname) {
 
     DBBusLineRegister reg;
 
-    // uint32_t total_register = header.meta.nroRegistros + header.meta.nroRegRemovidos;
+    uint32_t total_register = header.meta.nroRegistros + header.meta.nroRegRemovidos;
     uint64_t offset = ftell(bin_fp);
 
     // Le todos os registros de linhas de onibus do arquivo binario e se nao estiver marcado como removido os insere na arvore-B
-    for (int i = 0; read_bus_line_register(bin_fp, &reg); i++){
+    for (int i = 0; i < total_register; i++){
+        ASSERT(ok = read_bus_line_register(bin_fp, &reg));
+
         if (reg.removido == '1') {
             ASSERT(ok = btree_insert(&btree, reg.codLinha, offset) == BTREE_OK);
         }
@@ -155,16 +156,17 @@ bool search_for_vehicle(const char *bin_fname, const char *index_fname, const ch
     
     ASSERT(!btree_has_error(&btree));
 
-    // Verifica se o valor buscado contem algum resultado. Em caso positivo exibe os valores buscados, em caso contrario exibe uma mensagem de erro
+    // Verifica se o valor buscado contem algum resultado. Em caso positivo
+    // exibe os valores buscados, em caso contrario exibe uma mensagem de erro
     if (off < 0) {
         printf(REGISTER_NOT_FOUND);
-    }
-    else {
+    } else {
         fseek(bin_fp, off, SEEK_SET);
 
         DBVehicleRegister reg;
         ASSERT(ok = read_vehicle_register(bin_fp, &reg));
         print_vehicle(stdout, &reg, &header);
+        vehicle_drop(reg);
     }
 
 teardown:
@@ -183,7 +185,7 @@ teardown:
 
     btree_drop(btree);
     fclose(bin_fp);
-    return true;
+    return ok;
 }
 
 /*
@@ -209,7 +211,8 @@ bool search_for_bus_line(const char *bin_fname, const char *index_fname, uint32_
     
     ASSERT(!btree_has_error(&btree));
 
-    // Verifica se o valor buscado contem algum resultado. Em caso positivo exibe os valores buscados, em caso contrario exibe uma mensagem de erro
+    // Verifica se o valor buscado contem algum resultado. Em caso positivo
+    // exibe os valores buscados, em caso contrario exibe uma mensagem de erro
     if (off < 0) {
         printf(REGISTER_NOT_FOUND);
     } else {
@@ -218,6 +221,7 @@ bool search_for_bus_line(const char *bin_fname, const char *index_fname, uint32_
         DBBusLineRegister reg;
         ASSERT(ok = read_bus_line_register(bin_fp, &reg));
         print_bus_line(stdout, &reg, &header);
+        bus_line_drop(reg);
     }
 
 teardown:
@@ -236,7 +240,7 @@ teardown:
 
     btree_drop(btree);
     fclose(bin_fp);
-    return true;
+    return ok;
 }
 
 #undef ASSERT
