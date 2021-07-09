@@ -31,6 +31,8 @@ typedef enum {
     OP_CREATE_INDEX_BUS_LINE      = 10,
     OP_SEARCH_FOR_VEHICLE         = 11,
     OP_SEARCH_FOR_BUS_LINE        = 12,
+    OP_INSERT_AND_INDEX_VEHICLE   = 13,
+    OP_INSERT_AND_INDEX_BUS_LINE  = 14,
 } Op;
 
 void test(const char *fname) {
@@ -81,13 +83,19 @@ int main(void){
             break;
 
         case OP_INSERT_INTO_VEHICLE:
+            // Se trata do número de registros a serem inseridos. Entretanto,
+            // lemos até o EOF, então podemos ignorar essa entrada.
             input1 = read_word(stdin);
+
             if(vehicle_append_to_bin_from_stdin(file_name))
                 binarioNaTela(file_name);
             break;
 
         case OP_INSERT_INTO_BUS_LINE:
+            // Se trata do número de registros a serem inseridos. Entretanto,
+            // lemos até o EOF, então podemos ignorar essa entrada.
             input1 = read_word(stdin);
+
             if(bus_line_append_to_bin_from_stdin(file_name))
                 binarioNaTela(file_name);
             break;
@@ -123,6 +131,32 @@ int main(void){
             search_for_bus_line(file_name, input1, code);
             break;
         }
+
+        case OP_INSERT_AND_INDEX_VEHICLE:
+            // O nome do arquivo de índice
+            input1 = read_word(stdin);
+
+            // Se trata do número de registros a serem inseridos. Entretanto,
+            // lemos até o EOF, então podemos ignorar essa entrada.
+            input2 = read_word(stdin);
+
+            if (csv_append_to_bin_and_index_vehicle(file_name, input1))
+                binarioNaTela(input1);
+
+            break;
+
+        case OP_INSERT_AND_INDEX_BUS_LINE:
+            // O nome do arquivo de índice
+            input1 = read_word(stdin);
+
+            // Se trata do número de registros a serem inseridos. Entretanto,
+            // lemos até o EOF, então podemos ignorar essa entrada.
+            input2 = read_word(stdin);
+
+            if (csv_append_to_bin_and_index_bus_line(file_name, input1))
+                binarioNaTela(input1);
+
+            break;
     }
 
     if (file_name != NULL)
