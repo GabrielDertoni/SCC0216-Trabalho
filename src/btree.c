@@ -9,7 +9,6 @@
 #include <utils.h>
 #include <btree.h>
 
-
 #define PAGE_SZ  ((uint64_t)77)
 #define ENTRY_SZ 12
 
@@ -17,6 +16,7 @@
 // número ímpar.
 #define CAPACITY 5
 
+// Macro simples para prevenir repetição no código
 #define ASSERT(expr) \
     if (!(expr)) return false
 
@@ -24,12 +24,13 @@
 // função `fwrite`.
 const uint64_t NULL_RRN = -1;
 
-// Uma
+// Um par chave-valor.
 typedef struct {
     int32_t  key;
     uint64_t value;
 } Entry;
 
+// Representa um nó da Btree.
 typedef struct {
     bool     is_leaf;
     uint32_t len;
@@ -43,12 +44,14 @@ typedef struct {
     Entry    entries[CAPACITY];
 } Node;
 
-// Set csv `error_msg` to some format with variable arguments list.
+// Mesmo que `error` mas funciona com argumentos variáveis
 static void verror(BTreeMap *btree, const char *format, va_list ap) {
     if (btree->error_msg) free(btree->error_msg);
     btree->error_msg = alloc_vsprintf(format, ap);
 }
 
+// Coloca uma determinada mensagem de erro na `btree`. O formato dos argumentos
+// de formatação é o mesmo da função `printf`.
 static void error(BTreeMap *btree, const char *format, ...) {
     va_list ap;
     va_start(ap, format);
@@ -56,11 +59,14 @@ static void error(BTreeMap *btree, const char *format, ...) {
     va_end(ap);
 }
 
+// Garante que `fp` estará posicionado em determinado byte offset.
 static inline void position(FILE *fp, uint64_t offset) {
     if (ftell(fp) != offset)
         fseek(fp, offset, SEEK_SET);
 }
 
+// Garante que `fp` estará posicionado numa determinada página de memória de
+// acordo com o `rrn`. Vale notar que o RRN 0 não se refere ao byte offset 0.
 static inline void position_rrn(FILE *fp, uint32_t rrn) {
     uint64_t offset = PAGE_SZ + PAGE_SZ * (uint64_t)rrn;
     position(fp, offset);
@@ -126,6 +132,8 @@ static bool write_header(BTreeMap *btree, char status) {
     return true;
 }
 
+// Cria uma nova `BtreeMap`. Essa função não causa qualquer alocação e nem abre
+// arquivos.
 BTreeMap btree_new() {
     return (BTreeMap) {
         .fp        = NULL,
@@ -135,8 +143,11 @@ BTreeMap btree_new() {
     };
 }
 
+// Libera uma `BTreeMap`.
 void btree_drop(BTreeMap btree) {
     if (btree.fp) {
+        // Antes de fechar o arquivo, escreve novamente o header da btree, agora
+        // com status '1'.
         write_header(&btree, '1');
         fclose(btree.fp);
     }
@@ -145,6 +156,7 @@ void btree_drop(BTreeMap btree) {
         free(btree.error_msg);
 }
 
+// Carrega um arquivo de BTree para a `btree` passada por referência.
 BTreeResult btree_load(BTreeMap *btree, const char *fname) {
     FILE *fp = fopen(fname, "rb+");
 
@@ -155,6 +167,7 @@ BTreeResult btree_load(BTreeMap *btree, const char *fname) {
 
     btree->fp = fp;
 
+    // Lê somente o header da BTree.
     if (!read_header(btree)) {
         error(btree, "unable to read btree header from file");
         return BTREE_FAIL;
@@ -163,6 +176,7 @@ BTreeResult btree_load(BTreeMap *btree, const char *fname) {
     return BTREE_OK;
 }
 
+// Cria uma BTree nova no disco de acordo com o nome de arquivo fornecido.
 BTreeResult btree_create(BTreeMap *btree, const char *fname) {
     FILE *fp = fopen(fname, "wb+");
 
@@ -181,27 +195,37 @@ BTreeResult btree_create(BTreeMap *btree, const char *fname) {
     return BTREE_OK;
 }
 
+// Verifica se a btree possui erros.
 bool btree_has_error(BTreeMap *btree) {
     return btree->error_msg;
 }
 
+// Retorna uma referência à mensagem de erro da btree. Essa string não deve ser
+// alterada ou liberada.
 const char *btree_get_error(BTreeMap *btree) {
     return btree->error_msg;
 }
 
+// Encontra a posição onde `key` poderia ser inserida em `node`.
 static int key_position(Node node, uint32_t key) {
     int i;
     for (i = 0; i < node.len && key > node.entries[i].key; i++);
     return i;
 }
 
+// Função interna para obter um valor dado uma chave.
 static int64_t get(BTreeMap *btree, Node node, uint32_t key) {
+    // Primeiro, encontra a posição onde `key` seria inserida no nó atual.
     int i = key_position(node, key);
 
+    // Se tivermos encontrado a chave procurada, retornamos o valor
+    // correspondente a ela.
     if (i < node.len && node.entries[i].key == key) {
         return node.entries[i].value;
     }
 
+    // Se for um nó interno, lemos o nó filho onde `key` possa ser encontrada e
+    // chamamos `get` recursivamente no nó filho.
     if (!node.is_leaf) {
         Node next;
 
@@ -213,14 +237,25 @@ static int64_t get(BTreeMap *btree, Node node, uint32_t key) {
         return get(btree, next, key);
     }
 
+    // `node` é necessáriamente um nó folha, mas não encontramos `key`,
+    // portanto, retornamos -1 sinalizando que `key` não foi encontrada.
     return -1;
 }
 
+// Função externa que obtém um valor da btree dado uma chave. Vide `btree.h`.
 int64_t btree_get(BTreeMap *btree, int32_t key) {
+    // Se a btree não possui arquivo vinculado, erro.
+    if (!btree->fp) {
+        error(btree, "no associated file");
+        return -1;
+    }
+
+    // Se não há nó raiz na btree, ela está vazia e `key` não estará contida nela.
     if (btree->rrn_root < 0) {
         return -1;
     }
 
+    // Lemos o nó raiz e chamamos a função `get` interna.
     Node root;
     if (!read_node(btree, btree->rrn_root, &root)) {
         error(btree, "unable to read root");
@@ -230,6 +265,7 @@ int64_t btree_get(BTreeMap *btree, int32_t key) {
     return get(btree, root, key);
 }
 
+// Cria um `Node` contendo uma único par chave-valor.
 static Node node_from_entry(Entry entry, uint32_t rrn) {
     return (Node) {
         .is_leaf = true,
@@ -239,6 +275,7 @@ static Node node_from_entry(Entry entry, uint32_t rrn) {
     };
 }
 
+// Escreve um `Node` para o disco de acordo com o seu RRN.
 static bool write_node(BTreeMap *btree, Node node)  {
     position_rrn(btree->fp, node.rrn);
 
@@ -254,6 +291,8 @@ static bool write_node(BTreeMap *btree, Node node)  {
         ASSERT(fwrite(&NULL_RRN, sizeof(uint32_t), 1, btree->fp));
     }
 
+    // Iteramos por todos os pares chave-valor bem como pelos RRNs dos nós
+    // filhos, quando algum valor não está definido, escrevemos apenas 1s.
     for (int i = 0; i < CAPACITY - 1; i++) {
         if (i < node.len) {
             ASSERT(fwrite(&node.entries[i].key  , sizeof( int32_t), 1, btree->fp));
@@ -273,11 +312,15 @@ static bool write_node(BTreeMap *btree, Node node)  {
     return true;
 }
 
+// Cria e escreve um nó folha contendo apenas um par chave-valor no próximo RRN
+// disponível.
 static bool write_next_leaf(BTreeMap *btree, Entry entry) {
     Node leaf = node_from_entry(entry, btree->next_rrn++);
     return write_node(btree, leaf);
 }
 
+// Insere um par chave-valor num nó folha numa determinada posição do nó. Essa
+// função assume que `node->is_leaf` é `true`.
 static void insert_entry_leaf(Node *node, Entry entry, int at) {
     // Se a inserção deve ser feita no meio do nó, shifta todos os registros
     // e insere.
@@ -289,6 +332,9 @@ static void insert_entry_leaf(Node *node, Entry entry, int at) {
     node->len++;
 }
 
+// Insere um par chave-valor e também o RRN do nó com elementos maiores do que
+// `entry.key` num nó interno numa determinada posição do nó. Essa função assume
+// que `node->is_leaf` é `false`.
 static void insert_entry_inner(Node *node, Entry entry, uint32_t right_rrn, int at) {
     // Se a inserção deve ser feita no meio do nó, shifta todos os registros
     // e insere.
@@ -302,8 +348,8 @@ static void insert_entry_inner(Node *node, Entry entry, uint32_t right_rrn, int 
     node->len++;
 }
 
-// Um tipo interno que serve para somente para representar o comportamento de
-// uma inserção num nó filho.
+// Um tipo interno que serve somente para representar o comportamento de uma
+// inserção num nó filho. Esse tipo auxiliar ajuda nas funções de inserção.
 typedef struct {
     // O tipo de inserção que ocorreu
     enum {
@@ -344,6 +390,8 @@ static InsertResult node_split(BTreeMap *btree, Node left, Entry entry) {
     Entry promoted = left.entries[CAPACITY / 2];
 
     Node right = {
+        // O nó a ser criado será um nó folha somente se o nó a ser dividido
+        // também for um nó folha.
         .is_leaf = left.is_leaf,
         .len     = CAPACITY / 2,
         .rrn     = btree->next_rrn++,
@@ -351,17 +399,24 @@ static InsertResult node_split(BTreeMap *btree, Node left, Entry entry) {
 
     memcpy(right.entries, &left.entries[CAPACITY / 2] + 1, (CAPACITY / 2) * sizeof(Entry));
 
+    // Se o nó não é uma folha, copia também a metade superior dos filhos do nó
+    // sendo dividido.
     if (!right.is_leaf) {
         memcpy(right.children, &left.children[(CAPACITY + 1) / 2], ((CAPACITY + 1) / 2) * sizeof(uint32_t));
     }
 
+    // O nó sendo dividido passa a ter a metade da capacidade anterior.
     left.len = CAPACITY / 2;
 
+    // Escreve ambos os nós no disco, tanto o novo nó, quanto o nó já existente
+    // atualizado.
     if (!write_node(btree, left) || !write_node(btree, right)) {
         error(btree, "failed to split node when inserting entry with key %d", entry.key);
         return insertion_fail();
     }
 
+    // Como houve um split, retorna o par chave-valor promovido bem como o RRN
+    // do novo nó criado.
     return insertion_split(promoted, right.rrn);
 }
 
@@ -395,11 +450,11 @@ static InsertResult insert(BTreeMap *btree, Node head, Entry entry) {
         Entry old = head.entries[i];
         head.entries[i] = entry;
 
-        // TODO: Podería atualizar somente a entry que mudou e não o nó inteiro.
         if (!write_node(btree, head)) {
             error(btree, "failed to replace node entry with key %d", entry.key);
             return insertion_fail();
         }
+        // Sinaliza que a chave antiga foi substituída.
         return insertion_replaced(old);
     }
 
@@ -407,19 +462,24 @@ static InsertResult insert(BTreeMap *btree, Node head, Entry entry) {
     Node node;
     uint32_t node_rrn = head.children[i];
 
+    // Lê o nó filho do disco.
     if (!read_node(btree, node_rrn, &node)) {
         error(btree, "failed to read node at RRN %d", node_rrn);
         return insertion_fail();
     }
 
+    // Chama a função recursivamente. `result` armazena informações sobre como
+    // foi feita a inserção no nó filho.
     InsertResult result = insert(btree, node, entry);
 
+    // Se não houve split, repasse o mesmo resultado.
     if (result.type != INSERT_SPLIT) return result;
 
+    // O nó filho deu split.
     Entry promoted = result.entry;
     uint32_t promoted_child = result.rrn;
 
-    // O nó filho deu split.
+    // Insere o par chave-valor promovidos no nó atual.
     insert_entry_inner(&head, promoted, promoted_child, i);
 
     if (head.len == CAPACITY) {
@@ -437,13 +497,15 @@ static InsertResult insert(BTreeMap *btree, Node head, Entry entry) {
 }
 
 // Insere um novo par chave-valor na BTree. Cria um nó raiz caso ele não exista.
-// Essa função atua como um wrapper para a função interna `insert`.
+// Essa função atua como um wrapper para a função interna `insert`. Vide
+// `btree.h`.
 BTreeResult btree_insert(BTreeMap *btree, int32_t key, uint64_t value) {
     Entry entry = {
         .key = key,
         .value = value,
     };
 
+    // Se ainda não houver um nó raiz, crie ele.
     if (btree->rrn_root < 0) {
         btree->rrn_root = btree->next_rrn;
         if (!write_next_leaf(btree, entry)) {
@@ -456,13 +518,17 @@ BTreeResult btree_insert(BTreeMap *btree, int32_t key, uint64_t value) {
 
     Node root;
 
+    // Lê o nó raiz.
     if (!read_node(btree, btree->rrn_root, &root)) {
         error(btree, "failed to read root node at RRN %d", btree->rrn_root);
         return BTREE_FAIL;
     }
 
+    // Insere o par chave-valor na btree.
     InsertResult result = insert(btree, root, entry);
 
+    // Se o nó raiz deu split, cria uma nova raiz com o par chave-valor
+    // promovido.
     if (result.type == INSERT_SPLIT) {
         Node new_root = {
             .is_leaf  = false,
@@ -489,6 +555,7 @@ BTreeResult btree_insert(BTreeMap *btree, int32_t key, uint64_t value) {
 
 /* Funcionalidades adicionais */
 
+// Imprime um único nó da árvore.
 static void print_node(Node node) {
     printf("[%d]{ %d: %ld", node.rrn, node.entries[0].key, node.entries[0].value);
     for (int i = 1; i < node.len; i++) {
@@ -498,7 +565,7 @@ static void print_node(Node node) {
 }
 
 // Imprime os conteúdos de uma BTree. ATENÇÃO: Essa função causará undefined
-// behaviour caso possua um nível com mais de 10000 nós.
+// behavior caso possua um nível com mais de 10000 nós.
 void btree_print(BTreeMap *btree) {
 
 #define Q_SZ 10000
