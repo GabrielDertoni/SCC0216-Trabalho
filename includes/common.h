@@ -11,6 +11,7 @@
 #define NULL_VAL             "NULO"
 #define REMOVED_MARKER       '*'
 #define ERROR_FOUND          "Falha no processamento do arquivo.\n"
+#define REGISTER_NOT_FOUND   "Registro inexistente.\n"
 
 typedef struct {
     char    prefixo[5];
