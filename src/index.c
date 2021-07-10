@@ -26,8 +26,8 @@ static inline bool handle_error(FILE *to_close, BTreeMap failed_btree, const cha
     va_start(ap, format);
 
 #ifdef DEBUG
-    if (btree_has_error(failed_btree)) {
-        fprintf(stderr, "Error: %s.\n", btree_get_error(failed_btree));
+    if (btree_has_error(&failed_btree)) {
+        fprintf(stderr, "Error: %s.\n", btree_get_error(&failed_btree));
     }
 
     if (format) {
@@ -212,7 +212,7 @@ bool search_for_bus_line(const char *bin_fname, const char *index_fname, uint32_
         return handle_error(bin_fp, btree, "failed to open file %s", bin_fname);
 
     DBBusLineHeader header;
-    if (read_header_bus_line(bin_fp, &header))
+    if (!read_header_bus_line(bin_fp, &header))
         return handle_error(bin_fp, btree, "failed to read bus line header from %s", bin_fname);
 
     if (btree_load(&btree, index_fname) != BTREE_OK)
