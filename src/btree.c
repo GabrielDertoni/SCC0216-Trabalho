@@ -132,8 +132,11 @@ static bool write_header(BTreeMap *btree, char status) {
     return true;
 }
 
-// Cria uma nova `BtreeMap`. Essa função não causa qualquer alocação e nem abre
-// arquivos.
+/**
+ * Cria um novo `BtreeMap`. Não envolve alocação ou abertura de arquivos.
+ *
+ * @return uma BTree ainda sem arquivo vinculado.
+ */
 BTreeMap btree_new() {
     return (BTreeMap) {
         .fp        = NULL,
@@ -143,7 +146,11 @@ BTreeMap btree_new() {
     };
 }
 
-// Libera uma `BTreeMap`.
+/**
+ * Libera o `BTreeMap` inclusive fechando algum arquivo vinculado.
+ *
+ * @param btree - a btree a ser liberada.
+ */
 void btree_drop(BTreeMap btree) {
     if (btree.fp) {
         // Antes de fechar o arquivo, escreve novamente o header da btree, agora
@@ -156,7 +163,15 @@ void btree_drop(BTreeMap btree) {
         free(btree.error_msg);
 }
 
-// Carrega um arquivo de BTree para a `btree` passada por referência.
+/**
+ * Carrega a BTree de um arquivo. Essa operação lê apenas o header da BTree. O
+ * arquivo precisa já estar criado e possuir ao menos o header disponível.
+ *
+ * @param btree - referência mutável da btree que terá o arquivo vinculado.
+ * @param fname - nome do arquivo a ser vinculado a essa btree.
+ * @return `BTREE_OK` em caso de sucesso e `BTREE_FAIL` em caso de erro. No
+ *         segundo caso, uma mensagem de erro estará disponível.
+ */
 BTreeResult btree_load(BTreeMap *btree, const char *fname) {
     FILE *fp = fopen(fname, "rb+");
 
@@ -176,7 +191,14 @@ BTreeResult btree_load(BTreeMap *btree, const char *fname) {
     return BTREE_OK;
 }
 
-// Cria uma BTree nova no disco de acordo com o nome de arquivo fornecido.
+/**
+ * Cria um arquivo de BTree e vincula ele a um `BTreeMap`.
+ *
+ * @param btree - referência mutável da btree que terá o arquivo vinculado.
+ * @param fname - nome do arquivo a ser criado e vinculado a essa btree.
+ * @return `BTREE_OK` em caso de sucesso e `BTREE_FAIL` em caso de erro. No
+ *         segundo caso, uma mensagem de erro estará disponível.
+ */
 BTreeResult btree_create(BTreeMap *btree, const char *fname) {
     FILE *fp = fopen(fname, "wb+");
 
@@ -195,13 +217,23 @@ BTreeResult btree_create(BTreeMap *btree, const char *fname) {
     return BTREE_OK;
 }
 
-// Verifica se a btree possui erros.
+/**
+ * Verifica se a `btree` possui algum erro registrado.
+ *
+ * @param btree - a btree a ser verificada.
+ * @return `false` caso não tenha ocorrido erro e `true` caso tenha.
+ */
 bool btree_has_error(BTreeMap *btree) {
     return btree->error_msg;
 }
 
-// Retorna uma referência à mensagem de erro da btree. Essa string não deve ser
-// alterada ou liberada.
+/**
+ * Recupera a mensagem de erro da `btree`. A string retornada não deve ser
+ * modificada ou liberada.
+ *
+ * @param btree - a btree com erro.
+ * @return uma string contendo a mensagem de erro.
+ */
 const char *btree_get_error(BTreeMap *btree) {
     return btree->error_msg;
 }
@@ -242,7 +274,17 @@ static int64_t get(BTreeMap *btree, Node node, uint32_t key) {
     return -1;
 }
 
-// Função externa que obtém um valor da btree dado uma chave. Vide `btree.h`.
+/**
+ * Acessa um valor dado uma chave. Esse processo não envolve escritas ao disco,
+ * entretanto muda o *file_pointer* da `btree` e por isso ela não se mantém
+ * constante.
+ *
+ * @param btree - a btree a ser utilizada que precisa ter um arquivo vinculado.
+ * @param key - a chave de busca.
+ * @return o valor associado à `key` caso `key` esteja contida na btree e -1
+ *         caso contrário. Em caso de erro, -1 é retornado e `btree_has_error()`
+ *         retorna `true`.
+ */
 int64_t btree_get(BTreeMap *btree, int32_t key) {
     // Se a btree não possui arquivo vinculado, erro.
     if (!btree->fp) {
@@ -496,9 +538,16 @@ static InsertResult insert(BTreeMap *btree, Node head, Entry entry) {
     return insertion_fit();
 }
 
-// Insere um novo par chave-valor na BTree. Cria um nó raiz caso ele não exista.
-// Essa função atua como um wrapper para a função interna `insert`. Vide
-// `btree.h`.
+/**
+ * Insere um par chave-valor na BTree. Assume que `btree` já possua algum
+ * arquivo vinculado.
+ *
+ * @param btree - a btree no qual inserir.
+ * @param key - a chave usada para ordenação da btree.
+ * @param value - o valor associado.
+ * @return `BTREE_OK` em caso de sucesso e `BTREE_FAIL` em caso de erro. No
+ *         segundo caso, uma mensagem de erro estará disponível.
+ */
 BTreeResult btree_insert(BTreeMap *btree, int32_t key, uint64_t value) {
     Entry entry = {
         .key = key,
@@ -564,8 +613,14 @@ static void print_node(Node node) {
     printf(" }");
 }
 
-// Imprime os conteúdos de uma BTree. ATENÇÃO: Essa função causará undefined
-// behavior caso possua um nível com mais de 10000 nós.
+/**
+ * Imprime os conteúdos da `btree`.
+ * ATENÇÃO: Essa função causará undefined behavior caso possua um nível com
+ * mais de 10000 nós.
+ *
+ * @param btree - a btree a ser impressa. Essa função não causa escritas ao
+ *                disco, mas utiliza de `fseek` o que modifica `btree`.
+ */
 void btree_print(BTreeMap *btree) {
 
 #define Q_SZ 10000
