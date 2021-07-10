@@ -85,8 +85,8 @@ all: $(BIN)
 run: $(BIN)
 	@./$<
 
-debug: $(DEBUG_BIN)
-	@./$<
+debug:
+	@$(MAKE) -s $(DEBUG_BIN) --always-make
 
 $(DEBUG_BIN): CFLAGS := -g -DDEBUG $(CFLAGS)
 $(DEBUG_BIN): $(OBJS) | $(DEBUG_DIR)
