@@ -6,6 +6,7 @@
 
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
@@ -13,7 +14,6 @@
 #include <common.h>
 #include <csv_to_bin.h>
 #include <utils.h>
-#include <csv.h>
 #include <index.h>
 #include <btree.h>
 #include <bin.h>
