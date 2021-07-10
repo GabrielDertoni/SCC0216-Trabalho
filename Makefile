@@ -165,6 +165,10 @@ $(TARGET_DIR)/utils:
 util/%: $(TARGET_DIR)/utils/%
 	@./$< $(ARGS)
 
+zip:
+	rm -f Envio.zip
+	zip -r Envio.zip README.md Makefile $(SRC) $(HDR)
+
 # Removes all make generated directories and files
 clean:
 	rm -rf $(TARGET_DIR)
