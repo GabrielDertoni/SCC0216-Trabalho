@@ -1,3 +1,14 @@
+/**
+ * Header file que define alguns tipos e macros utilizados globalmente no
+ * projeto. Esse arquivo não é genérico e define exatamente os structs de duas
+ * formas:
+ *      - Representação lida do CSV: Vehicle e BusLine
+ *      - Representação lida do binário: DBMeta, DBVehicleHeader,
+ *                                       DBBusLineHeader, DBVehicleRegister,
+ *                                       DBBusLineRegister
+ */
+
+
 #ifndef COMMON_H
 #define COMMON_H
 
@@ -13,6 +24,7 @@
 #define ERROR_FOUND          "Falha no processamento do arquivo.\n"
 #define REGISTER_NOT_FOUND   "Registro inexistente.\n"
 
+// Representação de um veículo que será lida do CSV.
 typedef struct {
     char    prefixo[5];
     char    data[10];
@@ -22,13 +34,18 @@ typedef struct {
     char    *categoria;
 } Vehicle;
 
+// Representação de uma linha de ônibus que será lida do CSV.
 typedef struct {
+    // É uma string pois pode ser um número ou possuir um '*' no começo
+    // sinalizando que o registro está removido. Por conta da forma como csv.h
+    // funciona, não podemos fácilmente separar isso em dois campos.
     char codLinha[32];
     char aceitaCartao[1];
     char *nomeLinha;
     char *corLinha;
 } BusLine;
 
+// Header que é comum entre os arquivos binários e possui metadados sobre ele.
 typedef struct {
     char     status;
     uint64_t byteProxReg;
@@ -36,6 +53,7 @@ typedef struct {
     uint32_t nroRegRemovidos;
 } DBMeta;
 
+// Header de um arquivo binário de veículo.
 typedef struct {
     DBMeta meta;
     char   descrevePrefixo[18];
@@ -46,6 +64,7 @@ typedef struct {
     char   descreveCategoria[20];
 } DBVehicleHeader;
 
+// Header de um arquivo binário de linha de ônibus.
 typedef struct {
     DBMeta meta;
     char   descreveCodigo[15];
@@ -54,7 +73,7 @@ typedef struct {
     char   descreveCor[24];
 } DBBusLineHeader;
 
-
+// Registro de veículo do binário de veículo.
 typedef struct {
     char      removido;
     uint32_t  tamanhoRegistro;
@@ -68,6 +87,7 @@ typedef struct {
     char      *categoria;
 } DBVehicleRegister;
 
+// Registro de linha de ônibus do binário de linha.
 typedef struct {
     char      removido;
     uint32_t  tamanhoRegistro;
