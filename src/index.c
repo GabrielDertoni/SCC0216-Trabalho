@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <stdarg.h>
 
 #include <external.h>
 #include <index.h>
@@ -11,9 +12,43 @@
 #include <parsing.h>
 #include <common.h>
 
-#define ASSERT(expr) \
-    if (!(expr)) \
-        goto teardown
+// Trata erros das funções que trabalham com um arquivo binário e uma btree.
+// Quando compilado com -DDEBUG, imprime uma mensagem de erro descritiva, se não
+// imprime simplesmente ERROR_FOUND e retorna sempre `false` para poder ser
+// ergonômicamente integrada nas funções.
+//
+// Essa função fecha o arquivo `to_close` e libera `failed_btree`. O argumento
+// `format` pode ser NULL, nesse caso apenas o erro contido em `failed_btree` é
+// impresso, senão `format` junto com os outros argumentos variáveis são
+// impressos seguindo o padrão `printf`.
+static inline bool handle_error(FILE *to_close, BTreeMap failed_btree, const char *format, ...) {
+    va_list ap;
+    va_start(ap, format);
+
+#ifdef DEBUG
+    if (btree_has_error(failed_btree)) {
+        fprintf(stderr, "Error: %s.\n", btree_get_error(failed_btree));
+    }
+
+    if (format) {
+        fprintf(stderr, "Error: ");
+        vfprintf(stderr, format, ap);
+        fprintf(stderr, ".\n");
+    } else {
+        fprintf(stderr, "Error: unexpected.\n");
+    }
+#else
+    printf(ERROR_FOUND);
+#endif
+
+    btree_drop(failed_btree);
+    if(to_close)
+        fclose(to_close);
+
+    va_end(ap);
+
+    return false;
+}
 
 /*
 * Cria um arquivo de indice arvore-B para o arquivo de dados veiculo
@@ -24,14 +59,17 @@
 bool index_vehicle_create(const char *bin_fname, const char *index_fname) {
     BTreeMap btree = btree_new();
 
-    bool ok = false;
     FILE *bin_fp = fopen(bin_fname, "rb");
 
-    ASSERT(bin_fp); 
-    ASSERT(ok = btree_create(&btree, index_fname) == BTREE_OK);
+    if (!bin_fp)
+        return handle_error(bin_fp, btree, "failed to open file %s", bin_fname);
+
+    if (btree_create(&btree, index_fname) != BTREE_OK)
+        return handle_error(bin_fp, btree, NULL);
 
     DBVehicleHeader header;
-    ASSERT(ok = read_header_vehicle(bin_fp, &header));
+    if (!read_header_vehicle(bin_fp, &header))
+        return handle_error(bin_fp, btree, "failed to read vehicle header from %s", bin_fname);
 
     DBVehicleRegister reg;
 
@@ -40,11 +78,13 @@ bool index_vehicle_create(const char *bin_fname, const char *index_fname) {
 
     // Le todos os registros de veiculos do arquivo binario e se nao estiver marcado como removido os insere na arvore-B
     for (int i = 0; i < total_register; i++){
-        ASSERT(ok = read_vehicle_register(bin_fp, &reg));
+        if (!read_vehicle_register(bin_fp, &reg))
+            return handle_error(bin_fp, btree, "failed to read vehicle register");
 
         if (reg.removido == '1') {
             int32_t hash = convertePrefixo(reg.prefixo);
-            ASSERT(ok = btree_insert(&btree, hash, offset) == BTREE_OK);
+            if (btree_insert(&btree, hash, offset) != BTREE_OK)
+                return handle_error(bin_fp, btree, NULL);
         }
 
         free(reg.modelo);
@@ -53,25 +93,10 @@ bool index_vehicle_create(const char *bin_fname, const char *index_fname) {
         offset = ftell(bin_fp);
     }
 
-teardown:
-
-    if (!ok) {
-#ifdef DEBUG
-        if (btree.error_msg) {
-            fprintf(stderr, "Error: %s\n", btree.error_msg);
-        } else {
-            fprintf(stderr, "Error: unexpected\n");
-        }
-#else
-        printf(ERROR_FOUND);
-#endif
-    }
-
     btree_drop(btree);
-    if(bin_fp)
-        fclose(bin_fp);
+    fclose(bin_fp);
 
-    return ok;
+    return true;
 }
 
 /*
@@ -83,14 +108,17 @@ teardown:
 bool index_bus_line_create(const char *bin_fname, const char *index_fname) {
     BTreeMap btree = btree_new();
 
-    bool ok = true;
     FILE *bin_fp = fopen(bin_fname, "rb");
 
-    ASSERT(bin_fp);
-    ASSERT(ok = btree_create(&btree, index_fname) == BTREE_OK);
+    if (!bin_fp)
+        return handle_error(bin_fp, btree, "failed to open file %s", bin_fname);
+
+    if (btree_create(&btree, index_fname) != BTREE_OK)
+        return handle_error(bin_fp, btree, NULL);
 
     DBBusLineHeader header;
-    ASSERT(ok = read_header_bus_line(bin_fp, &header));
+    if (!read_header_bus_line(bin_fp, &header))
+        return handle_error(bin_fp, btree, "failed to read bus line header from %s", bin_fname);
 
     DBBusLineRegister reg;
 
@@ -99,10 +127,12 @@ bool index_bus_line_create(const char *bin_fname, const char *index_fname) {
 
     // Le todos os registros de linhas de onibus do arquivo binario e se nao estiver marcado como removido os insere na arvore-B
     for (int i = 0; i < total_register; i++){
-        ASSERT(ok = read_bus_line_register(bin_fp, &reg));
+        if (!read_bus_line_register(bin_fp, &reg))
+            return handle_error(bin_fp, btree, "failed to read bus line register");
 
         if (reg.removido == '1') {
-            ASSERT(ok = btree_insert(&btree, reg.codLinha, offset) == BTREE_OK);
+            if (btree_insert(&btree, reg.codLinha, offset) != BTREE_OK)
+                return handle_error(bin_fp, btree, NULL);
         }
 
         free(reg.nomeLinha);
@@ -111,25 +141,10 @@ bool index_bus_line_create(const char *bin_fname, const char *index_fname) {
         offset = ftell(bin_fp);
     }
 
-teardown:
-
-    if (!ok) {
-#ifdef DEBUG
-        if (btree.error_msg) {
-            fprintf(stderr, "Error: %s\n", btree.error_msg);
-        } else {
-            fprintf(stderr, "Error: unexpected\n");
-        }
-#else
-        printf(ERROR_FOUND);
-#endif
-    }
-
     btree_drop(btree);
-    if (bin_fp)
-        fclose(bin_fp);
+    fclose(bin_fp);
 
-    return ok;
+    return true;
 }
 
 /*
@@ -142,19 +157,23 @@ teardown:
 bool search_for_vehicle(const char *bin_fname, const char *index_fname, const char prefixo[6]) {
     BTreeMap btree = btree_new();
 
-    bool ok = true;
     FILE *bin_fp = fopen(bin_fname, "rb");
 
-    ASSERT(bin_fp);
+    if (!bin_fp)
+        return handle_error(bin_fp, btree, "failed to open file %s", bin_fname);
 
     DBVehicleHeader header;
-    ASSERT(ok = read_header_vehicle(bin_fp, &header));
-    ASSERT(ok = btree_load(&btree, index_fname) == BTREE_OK);
+    if (!read_header_vehicle(bin_fp, &header))
+        return handle_error(bin_fp, btree, "failed to read vehicle register from %s", bin_fname);
+
+    if (btree_load(&btree, index_fname) != BTREE_OK)
+        return handle_error(bin_fp, btree, NULL);
 
     int32_t hash = convertePrefixo((char *)prefixo);
     int64_t off = btree_get(&btree, hash);
     
-    ASSERT(!btree_has_error(&btree));
+    if (btree_has_error(&btree))
+        return handle_error(bin_fp, btree, NULL);
 
     // Verifica se o valor buscado contem algum resultado. Em caso positivo
     // exibe os valores buscados, em caso contrario exibe uma mensagem de erro
@@ -164,28 +183,17 @@ bool search_for_vehicle(const char *bin_fname, const char *index_fname, const ch
         fseek(bin_fp, off, SEEK_SET);
 
         DBVehicleRegister reg;
-        ASSERT(ok = read_vehicle_register(bin_fp, &reg));
+        if (!read_vehicle_register(bin_fp, &reg))
+            return handle_error(bin_fp, btree, "failed to read vehicle register");
+
         print_vehicle(stdout, &reg, &header);
         vehicle_drop(reg);
     }
 
-teardown:
-
-    if (!ok) {
-#ifdef DEBUG
-        if (btree.error_msg) {
-            fprintf(stderr, "Error: %s\n", btree.error_msg);
-        } else {
-            fprintf(stderr, "Error: unexpected\n");
-        }
-#else
-        printf(ERROR_FOUND);
-#endif
-    }
-
     btree_drop(btree);
     fclose(bin_fp);
-    return ok;
+
+    return true;
 }
 
 /*
@@ -198,18 +206,22 @@ teardown:
 bool search_for_bus_line(const char *bin_fname, const char *index_fname, uint32_t code) {
     BTreeMap btree = btree_new();
 
-    bool ok = true;
     FILE *bin_fp = fopen(bin_fname, "rb");
 
-    ASSERT(bin_fp);
+    if (!bin_fp)
+        return handle_error(bin_fp, btree, "failed to open file %s", bin_fname);
 
     DBBusLineHeader header;
-    ASSERT(ok = read_header_bus_line(bin_fp, &header));
-    ASSERT(ok = btree_load(&btree, index_fname) == BTREE_OK);
+    if (read_header_bus_line(bin_fp, &header))
+        return handle_error(bin_fp, btree, "failed to read bus line header from %s", bin_fname);
+
+    if (btree_load(&btree, index_fname) != BTREE_OK)
+        return handle_error(bin_fp, btree, NULL);
 
     int64_t off = btree_get(&btree, code);
     
-    ASSERT(!btree_has_error(&btree));
+    if (btree_has_error(&btree))
+        return handle_error(bin_fp, btree, NULL);
 
     // Verifica se o valor buscado contem algum resultado. Em caso positivo
     // exibe os valores buscados, em caso contrario exibe uma mensagem de erro
@@ -219,31 +231,17 @@ bool search_for_bus_line(const char *bin_fname, const char *index_fname, uint32_
         fseek(bin_fp, off, SEEK_SET);
 
         DBBusLineRegister reg;
-        ASSERT(ok = read_bus_line_register(bin_fp, &reg));
+        if (!read_bus_line_register(bin_fp, &reg))
+            return handle_error(bin_fp, btree, "failed to read bus line register");
+
         print_bus_line(stdout, &reg, &header);
         bus_line_drop(reg);
     }
 
-teardown:
-
-    if (!ok) {
-#ifdef DEBUG
-        if (btree.error_msg) {
-            fprintf(stderr, "Error: %s\n", btree.error_msg);
-        } else {
-            fprintf(stderr, "Error: unexpected\n");
-        }
-#else
-        printf(ERROR_FOUND);
-#endif
-    }
-
     btree_drop(btree);
     fclose(bin_fp);
-    return ok;
+    return true;
 }
-
-#undef ASSERT
 
 typedef struct {
     FILE *bin_fp;
@@ -333,82 +331,51 @@ static bool csv_append_to_bin_and_index(
     CSVIterFunc *iter,
     const char *sep
 ) {
-    FILE *fp = fopen(bin_fname, "r+b");
-
-    if (!fp) {
-
-#ifdef DEBUG            // Desenvolvimento e testes
-        fprintf(stderr, "Error: Could not open file.\n");
-#else
-        printf(ERROR_FOUND);
-#endif
-        return false;
-    }
     BTreeMap btree = btree_new();
+    FILE *bin_fp = fopen(bin_fname, "r+b");
 
-#ifdef DEBUG            // Desenvolvimento e testes
-#define ASSERT(expr, ...)                 \
-    do {                                  \
-        if (!(expr)) {                    \
-            fprintf(stderr, __VA_ARGS__); \
-            btree_drop(btree);            \
-            fclose(fp);                   \
-            return false;                 \
-        }                                 \
-    } while (0)
-#else
-#define ASSERT(expr, ...)                 \
-    do {                                  \
-        if (!(expr)) {                    \
-            printf(ERROR_FOUND);          \
-            btree_drop(btree);            \
-            fclose(fp);                   \
-            return false;                 \
-        }                                 \
-    } while (0)
-#endif
+    if (!bin_fp)
+        return handle_error(bin_fp, btree, "could not open file %s", bin_fname);
 
     // Verifica se a arvore-B consegue ser carregada
-    ASSERT(btree_load(&btree, index_fname) == BTREE_OK,
-           "Error: could not load btree from file '%s'.\n", index_fname);
+    if (btree_load(&btree, index_fname) != BTREE_OK)
+        return handle_error(bin_fp, btree, "could not load btree from file %s", index_fname);
 
     DBMeta meta;
 
     // Verifica se o arquivo binario consegue ser lido e reailza a leitura
-    ASSERT(read_meta(fp, &meta),
-           "Error: could not read meta header from file '%s'.\n", bin_fname);
+    if (!read_meta(bin_fp, &meta))
+        return handle_error(bin_fp, btree, "could not read meta header from file %s", bin_fname);
 
     // Verifica se o status do arquivo binario consegue ser atualizado e o atualiza para 0 (siginifica que sera realizado insercao)
-    ASSERT(update_header_status('0', fp),
-           "Error: could not write status to file '%s'.\n", bin_fname);
+    if (!update_header_status('0', bin_fp))
+        return handle_error(bin_fp, btree, "could not write status to file %s", bin_fname);
 
     IterArgs args = {
-        .bin_fp            = fp,
+        .bin_fp            = bin_fp,
         .btree             = &btree,
         .reg_count         = 0,
         .removed_reg_count = 0,
     };
 
     // Vai para o fim do arquivo para adicionar novos registros.
-    fseek(fp, 0L, SEEK_END);
+    fseek(bin_fp, 0L, SEEK_END);
 
-    ASSERT(csv_iterate_rows(csv, sep, (CSVIterFunc *)iter, &args) == CSV_OK,
-           "Error: %s.\n", csv_get_error(csv));
+    if (csv_iterate_rows(csv, sep, (CSVIterFunc *)iter, &args) != CSV_OK)
+        return handle_error(bin_fp, btree, NULL);
 
     meta.status = '1';
-    meta.byteProxReg = ftell(fp);
+    meta.byteProxReg = ftell(bin_fp);
     meta.nroRegRemovidos += args.removed_reg_count;
     meta.nroRegistros += args.reg_count;
 
-    ASSERT(update_header_meta(&meta, fp),
-           "Error: could not write meta header to file '%s'.\n", bin_fname);
+    if (!update_header_meta(&meta, bin_fp))
+        return handle_error(bin_fp, btree, "could not write meta header to file %s", bin_fname);
 
-    fclose(fp);
+    fclose(bin_fp);
     btree_drop(btree);
 
     return true;
-
-#undef ASSERT
 }
 
 /*
