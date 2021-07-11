@@ -200,7 +200,7 @@ bool search_for_vehicle(const char *bin_fname, const char *index_fname, const ch
 * Recupera os regstros buscados de um determinado arquivo de dados lnhas de onibus usando o indice arvore-B
 * @params bin_fname - nome do arquivo binario linhas de onibus
 * @params index_fname - nome do arquivo binario de indices arvore-B
-* @params prefixo[6] - valor do campo prefixo em que sera feita a busca
+* @params code - valor do campo cdigo em que sera feita a busca
 * @returns um valor booleano - true se a busca for feita com sucesso, false se ocorrer algum erro
 */
 bool search_for_bus_line(const char *bin_fname, const char *index_fname, uint32_t code) {
