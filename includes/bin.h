@@ -95,4 +95,8 @@ void vehicle_drop(DBVehicleRegister v);
 // Desaloca a memória alocada para as strings nomeLinha e corLinha das linhas de ônibus
 void bus_line_drop(DBBusLineRegister b);
 
+bool order_vehicle_bin_file(const char *bin_fname, const char *ordered_bin_fname);
+
+bool order_bus_line_bin_file(const char *bin_fname, const char *ordered_bin_fname);
+
 #endif

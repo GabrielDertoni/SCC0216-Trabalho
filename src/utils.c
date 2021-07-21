@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include<string.h>
+#include<utils.h>
 
 #define QUOTE 34
 #define SPACE 32
@@ -58,4 +60,47 @@ char *read_word(FILE *in) {
     string[len-1] = '\0';
     string = realloc(string, len);
     return string;
+}
+
+void merge(void *data, int s_items, int begin, int half, int end, __compare_function__ cmp){
+    char *copy_data = malloc((end - begin + 1) * s_items);
+    int i = begin, j = half+1, k = 0;
+    while(i <= half && j <= end){
+        int result = cmp(data, i, j);
+        if(result <= 0){
+            memcpy(&copy_data[k*s_items], &((char*)data)[i*s_items], s_items);
+            i++;
+        }
+        else{
+            memcpy(&copy_data[k*s_items], &((char*)data)[j*s_items], s_items);
+            j++;
+        }
+        k++;
+    }
+
+    while(i <= half){
+        memcpy(&copy_data[k*s_items], &((char*)data)[i*s_items], s_items);
+        i++;
+        k++;
+    }
+
+    while(j <= end){
+        memcpy(&copy_data[k*s_items], &((char*)data)[j*s_items], s_items);
+        j++;
+        k++;
+    }
+    for(int i = begin, k = 0; i <= end; i++, k++){
+        memcpy(&((char*)data)[i*s_items], &copy_data[k*s_items], s_items);
+    }
+
+    free(copy_data);
+}
+
+void mergesort(void *data, int s_items, int begin, int end, __compare_function__ cmp){
+    if(end <= begin)
+        return;
+    int half = begin + (int)((end - begin) / 2);
+    mergesort(data, s_items, begin, half, cmp);
+    mergesort(data, s_items, half+1, end, cmp);
+    merge(data, s_items, begin, half, end, cmp);
 }
