@@ -19,10 +19,15 @@
 #define VEHICLE_HEADER_SIZE  (158 + META_SIZE)
 #define BUS_LINE_HEADER_SIZE ( 65 + META_SIZE)
 
+// Macros com mensagens a serem exibidas.
+#define NO_REGISTER         "Registro inexistente.\n"
+#define NO_VALUE            "campo com valor nulo"
+#define YES                 "PAGAMENTO SOMENTE COM CARTAO SEM PRESENCA DE COBRADOR"
+#define NO                  "PAGAMENTO EM CARTAO E DINHEIRO"
+#define WEEKEND             "PAGAMENTO EM CARTAO SOMENTE NO FINAL DE SEMANA"
 #define NULL_VAL             "NULO"
 #define REMOVED_MARKER       '*'
 #define ERROR_FOUND          "Falha no processamento do arquivo.\n"
-#define REGISTER_NOT_FOUND   "Registro inexistente.\n"
 
 // Representação de um veículo que será lida do CSV.
 typedef struct {

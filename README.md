@@ -64,5 +64,4 @@ Makefile. Por padrão essa localização é `target/test`.
 Para somente compilar os testes mas não rodar nenhum, use `make build_tests`.
 
 ## TODO
-- Testar mudanças no código do trabalho 1 contra os casos de trabalho 1 para
-    verificar se tudo continua funcionando corretamente.
+- encontrar as funções print_vehicle() e print_bus_line() e acrescentar fprintf(stdout, "\n") depois da chamada delas. Isso porque eu alterei essas funções para se encaixarem nas definições do trabalho 3 e para que os dois outros trabalhos ainda funcionem é preciso fazer essa leve alteração.

@@ -21,21 +21,22 @@
 
 // Enum contendo os valores de cada operacao implementada no trabalho
 typedef enum {
-    OP_CREATE_TABLE_VEHICLE       =  1,
-    OP_CREATE_TABLE_BUS_LINE      =  2,
-    OP_SELECT_FROM_VEHICLE        =  3,
-    OP_SELECT_FROM_BUS_LINE       =  4,
-    OP_SELECT_FROM_VEHICLE_WHERE  =  5,
-    OP_SELECT_FROM_BUS_LINE_WHERE =  6,
-    OP_INSERT_INTO_VEHICLE        =  7,
-    OP_INSERT_INTO_BUS_LINE       =  8,
-    OP_CREATE_INDEX_VEHICLE       =  9,
-    OP_CREATE_INDEX_BUS_LINE      = 10,
-    OP_SEARCH_FOR_VEHICLE         = 11,
-    OP_SEARCH_FOR_BUS_LINE        = 12,
-    OP_INSERT_AND_INDEX_VEHICLE   = 13,
-    OP_INSERT_AND_INDEX_BUS_LINE  = 14,
-    OP_JOIN_VEHICLE_AND_BUS_LINE  = 15,
+    OP_CREATE_TABLE_VEHICLE             =  1,
+    OP_CREATE_TABLE_BUS_LINE            =  2,
+    OP_SELECT_FROM_VEHICLE              =  3,
+    OP_SELECT_FROM_BUS_LINE             =  4,
+    OP_SELECT_FROM_VEHICLE_WHERE        =  5,
+    OP_SELECT_FROM_BUS_LINE_WHERE       =  6,
+    OP_INSERT_INTO_VEHICLE              =  7,
+    OP_INSERT_INTO_BUS_LINE             =  8,
+    OP_CREATE_INDEX_VEHICLE             =  9,
+    OP_CREATE_INDEX_BUS_LINE            = 10,
+    OP_SEARCH_FOR_VEHICLE               = 11,
+    OP_SEARCH_FOR_BUS_LINE              = 12,
+    OP_INSERT_AND_INDEX_VEHICLE         = 13,
+    OP_INSERT_AND_INDEX_BUS_LINE        = 14,
+    OP_JOIN_VEHICLE_AND_BUS_LINE        = 15,
+    OP_JOIN_VEHICLE_AND_BUS_LINE_BTREE  = 16,
 } Op;
 
 int main(void){
@@ -158,6 +159,15 @@ int main(void){
             free(read_word(stdin));
             free(read_word(stdin));
             join_vehicle_and_bus_line(file_name, input1);
+            break;
+
+        case OP_JOIN_VEHICLE_AND_BUS_LINE_BTREE:
+            input1 = read_word(stdin);
+            // Consome a entrada dos campos 'codLinha'
+            free(read_word(stdin));
+            free(read_word(stdin));
+            input2 = read_word(stdin);
+            join_vehicle_and_bus_line_using_btree(file_name, input1, input2);
             break;
     }
 
