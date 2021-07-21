@@ -85,7 +85,7 @@ typedef struct {
     char      prefixo[5];
     char      data[10];
     int32_t   quantidadeLugares;
-    int32_t   codLinha;
+    uint32_t  codLinha;
     uint32_t  tamanhoModelo;
     char      *modelo;
     uint32_t  tamanhoCategoria;
