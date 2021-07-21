@@ -456,6 +456,7 @@ bool join_vehicle_and_bus_line(const char *vehiclebin_fname, const char *busline
     DBVehicleHeader header_vehicle;
     if (!read_header_vehicle(file_vehicle, &header_vehicle)) {
         printf(ERROR_FOUND);
+        fclose(file_busline);
         fclose(file_vehicle);
         return false;
     }
