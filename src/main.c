@@ -37,6 +37,8 @@ typedef enum {
     OP_INSERT_AND_INDEX_BUS_LINE        = 14,
     OP_JOIN_VEHICLE_AND_BUS_LINE        = 15,
     OP_JOIN_VEHICLE_AND_BUS_LINE_BTREE  = 16,
+    OP_ORDER_VEHICLE_BIN_FILE           = 17,
+    OP_ORDER_BUS_LINE_BIN_FILE          = 18,
 } Op;
 
 int main(void){
@@ -168,6 +170,22 @@ int main(void){
             free(read_word(stdin));
             input2 = read_word(stdin);
             join_vehicle_and_bus_line_using_btree(file_name, input1, input2);
+            break;
+
+        case OP_ORDER_VEHICLE_BIN_FILE:
+            input1 = read_word(stdin);
+            // Consome 'campoOrdenacao'
+            free(read_word(stdin));
+            if(order_vehicle_bin_file(file_name, input1))
+                binarioNaTela(input1);
+            break;
+
+        case OP_ORDER_BUS_LINE_BIN_FILE:
+            input1 = read_word(stdin);
+            // Consome 'campoOrdenacao'
+            free(read_word(stdin));
+            if(order_bus_line_bin_file(file_name, input1))
+                binarioNaTela(input1);
             break;
     }
 
