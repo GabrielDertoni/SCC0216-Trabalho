@@ -35,6 +35,7 @@ typedef enum {
     OP_SEARCH_FOR_BUS_LINE        = 12,
     OP_INSERT_AND_INDEX_VEHICLE   = 13,
     OP_INSERT_AND_INDEX_BUS_LINE  = 14,
+    OP_JOIN_VEHICLE_AND_BUS_LINE  = 15,
 } Op;
 
 int main(void){
@@ -149,6 +150,14 @@ int main(void){
             if (csv_append_to_bin_and_index_bus_line(file_name, input1))
                 binarioNaTela(input1);
 
+            break;
+
+        case OP_JOIN_VEHICLE_AND_BUS_LINE:
+            input1 = read_word(stdin);
+            // Consome a entrada dos campos 'codLinha'
+            free(read_word(stdin));
+            free(read_word(stdin));
+            join_vehicle_and_bus_line(file_name, input1);
             break;
     }
 

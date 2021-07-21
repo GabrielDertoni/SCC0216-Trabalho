@@ -220,9 +220,9 @@ void print_vehicle(FILE *out, const DBVehicleRegister *reg, const DBVehicleHeade
         fprintf(out, "%.35s: %s\n", header->descreveData, NO_VALUE);
 
     if(reg->quantidadeLugares != -1)
-        fprintf(out, "%.42s: %d\n\n", header->descreveLugares, reg->quantidadeLugares);
+        fprintf(out, "%.42s: %d\n", header->descreveLugares, reg->quantidadeLugares);
     else
-        fprintf(out, "%.42s: %s\n\n", header->descreveLugares, NO_VALUE);
+        fprintf(out, "%.42s: %s\n", header->descreveLugares, NO_VALUE);
 }
 
 // Imprime as informações de busca do arquivo binário das linhas de ônibus
@@ -240,16 +240,16 @@ void print_bus_line(FILE *out, const DBBusLineRegister *reg, const DBBusLineHead
 
     switch(reg->aceitaCartao){
         case 'S':
-            fprintf(out, "%.13s: %s\n\n", header->descreveCartao, YES);
+            fprintf(out, "%.13s: %s\n", header->descreveCartao, YES);
             break;
         case 'N':
-            fprintf(out, "%.13s: %s\n\n", header->descreveCartao, NO);
+            fprintf(out, "%.13s: %s\n", header->descreveCartao, NO);
             break;
         case 'F':
-            fprintf(out, "%.13s: %s\n\n", header->descreveCartao, WEEKEND);
+            fprintf(out, "%.13s: %s\n", header->descreveCartao, WEEKEND);
             break;
         default:
-            fprintf(out, "%.13s: %s\n\n", header->descreveCartao, NO_VALUE);
+            fprintf(out, "%.13s: %s\n", header->descreveCartao, NO_VALUE);
             break;
     }
 }
@@ -420,6 +420,7 @@ bool select_from_vehicle_where(const char *from_file, const char *where_field, c
 
         if(print) {
             print_vehicle(stdout, &reg, &header);
+            fprintf(stdout, "\n");
             n_matching++;
         }
 
@@ -460,6 +461,7 @@ bool select_from_bus_line_where(const char *from_file, const char *where_field, 
 
         if (print) {
             print_bus_line(stdout, &reg, &header);
+            fprintf(stdout, "\n");
             n_matching++;
         }
 
@@ -474,5 +476,71 @@ bool select_from_bus_line_where(const char *from_file, const char *where_field, 
         return false;
     }
 
+    return true;
+}
+
+/*
+* Searches every matching codLinha from a vehicle binary file and a bus line binary file
+* @param vehiclebin_fname - path to the binary vehicle file
+* @param buslinebin_fname - path to the binary bus line file
+* @returns - a boolean value, true indicates that everythin worked and matching criteria was found, false means that something went wrong or no matching criteria was found
+*/
+bool join_vehicle_and_bus_line(const char *vehiclebin_fname, const char *buslinebin_fname){
+    FILE *file_vehicle = fopen(vehiclebin_fname, "r");
+    FILE *file_busline = fopen(buslinebin_fname, "r");
+    
+    // Verifica se os caminho dos dois arquivos existem
+    if(!check_file(file_vehicle)) return false;
+    if(!check_file(file_busline)) return false;
+    
+    DBVehicleHeader header_vehicle;
+    if (!read_header_vehicle(file_vehicle, &header_vehicle)) {
+        printf(ERROR_FOUND);
+        fclose(file_vehicle);
+        return false;
+    }
+    
+    DBBusLineRegister reg_busline;
+    DBVehicleRegister reg_vehicle;
+
+    bool removed_vehicle, removed_busline;
+
+    int n_matching = 0;
+    // Loops and reads all the binary vehicle registers
+    while(read_vehicle_register(file_vehicle, &reg_vehicle)){
+        // Checks if the current vehicle register is removed
+        removed_vehicle = reg_vehicle.removido == '0';
+        
+        // Sets the bus line binary file to the start
+        fseek(file_busline, 0, SEEK_SET);
+        // Reads the header of the binary bus line file
+        DBBusLineHeader header_busline;
+        if (!read_header_bus_line(file_busline, &header_busline)) {
+            printf(ERROR_FOUND);
+            fclose(file_busline);
+            return false;
+        }
+
+        // Loops and reads all the registers in the binary bus line file
+        while(read_bus_line_register(file_busline, &reg_busline) && !removed_vehicle){
+            // Checks if the current bus line register is removed
+            removed_busline = reg_busline.removido == '0';
+            // Prints the result if matches the criteria
+            if(reg_vehicle.codLinha == reg_busline.codLinha && !removed_busline){
+                print_vehicle(stdout, &reg_vehicle, &header_vehicle);
+                print_bus_line(stdout, &reg_busline, &header_busline);
+                fprintf(stdout, "\n");
+                n_matching++; // Adds +1 in the numberof matches
+            }
+        }
+    }
+    // Closes the binary files
+    fclose(file_busline);
+    fclose(file_vehicle);
+    // Prints an error message if no match if found
+    if(n_matching <= 0){
+        printf(NO_REGISTER);
+        return false;
+    }
     return true;
 }
