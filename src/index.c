@@ -171,7 +171,7 @@ bool search_for_vehicle(const char *bin_fname, const char *index_fname, const ch
 
     int32_t hash = convertePrefixo((char *)prefixo);
     int64_t off = btree_get(&btree, hash);
-    
+
     if (btree_has_error(&btree))
         return handle_error(bin_fp, btree, NULL);
 
@@ -219,7 +219,7 @@ bool search_for_bus_line(const char *bin_fname, const char *index_fname, uint32_
         return handle_error(bin_fp, btree, NULL);
 
     int64_t off = btree_get(&btree, code);
-    
+
     if (btree_has_error(&btree))
         return handle_error(bin_fp, btree, NULL);
 
@@ -347,7 +347,8 @@ static bool csv_append_to_bin_and_index(
     if (!read_meta(bin_fp, &meta))
         return handle_error(bin_fp, btree, "could not read meta header from file %s", bin_fname);
 
-    // Verifica se o status do arquivo binario consegue ser atualizado e o atualiza para 0 (siginifica que sera realizado insercao)
+    // Verifica se o status do arquivo binario consegue ser atualizado e o atualiza para 0
+    // (siginifica que sera realizado insercao)
     if (!update_header_status('0', bin_fp))
         return handle_error(bin_fp, btree, "could not write status to file %s", bin_fname);
 
@@ -379,7 +380,8 @@ static bool csv_append_to_bin_and_index(
 }
 
 /*
-* Insere cada registro em um arquivo binário de dados veículo e a chave de busca correspondente a essa inserção inserida no indice arvore-B
+* Insere cada registro em um arquivo binário de dados veículo e a chave de busca
+* correspondente a essa inserção inserida no indice arvore-B
 *
 * @params bin_fname - string que corresponde ao nome do arquivo binario de veiculos
 * @params index_fname - string que corresponde ao nome do arquivo binario de indices arvore-B
@@ -396,7 +398,8 @@ bool csv_append_to_bin_and_index_vehicle(const char *bin_fname, const char *inde
 }
 
 /*
-* Insere cada registro em um arquivo binário de dados linha de onibus e a chave de busca correspondente a essa inserção inserida no indice arvore-B
+* Insere cada registro em um arquivo binário de dados linha de onibus e a chave de busca
+* correspondente a essa inserção inserida no indice arvore-B
 *
 * @params bin_fname - string que corresponde ao nome do arquivo binario de linhas de onibus
 * @params index_fname - string que corresponde ao nome do arquivo binario de indices arvore-B
@@ -421,8 +424,9 @@ bool checks_file(FILE *fp){
     return true;
 }
 
-// Verifica a quantidade de itens que satisfazem uma busca. Exibe uma mensagem de erro se nenhuma é encontrada e retorna false, retorna true em caso contrário.
-bool checks_matching(int n_matching){
+// Verifica a quantidade de itens que satisfazem uma busca. Exibe uma mensagem de erro se
+// nenhuma é encontrada e retorna false, retorna true em caso contrário.
+static bool checks_matching(int n_matching){
     if(n_matching <= 0){
         printf(NO_REGISTER);
         return false;
@@ -432,15 +436,19 @@ bool checks_matching(int n_matching){
 
 // TODO - alterar meus comentários em inglês, estava com o código de grafos na cabeça ainda
 /*
-* Exibe os resultados que satisfazem a busca de codLinha no arquivo binário de veículos e no arquivo binário de linhsa de ônibus 
+* Exibe os resultados que satisfazem a busca de codLinha no arquivo binário de veículos e
+* no arquivo binário de linhsa de ônibus
+*
 * @param vehiclebin_fname - caminho para o arquivo binário de veículos
 * @param buslinebin_fname - caminho para o arquivo binário de linhas de ônibus
-* @returns - um valor booleano = true se a leitura dos arquivos der certo e retornar algum resultado, false se a leitura dos arquivos der errado ou não retornar nenhum resultado da busca
+* @returns - um valor booleano = true se a leitura dos arquivos der certo e retornar algum
+*            resultado, false se a leitura dos arquivos der errado ou não retornar nenhum
+*            resultado da busca
 */
 bool join_vehicle_and_bus_line(const char *vehiclebin_fname, const char *buslinebin_fname){
-    FILE *file_vehicle = fopen(vehiclebin_fname, "r");
-    FILE *file_busline = fopen(buslinebin_fname, "r");
-    
+    FILE *file_vehicle = fopen(vehiclebin_fname, "rb");
+    FILE *file_busline = fopen(buslinebin_fname, "rb");
+
     // Verifica se os caminho dos dois arquivos existem
     if(!checks_file(file_vehicle)) return false;
     if(!checks_file(file_busline)) return false;
@@ -451,32 +459,54 @@ bool join_vehicle_and_bus_line(const char *vehiclebin_fname, const char *busline
         fclose(file_vehicle);
         return false;
     }
-    
+
+    // Reads the header of the binary bus line file
+    DBBusLineHeader header_busline;
+    if (!read_header_bus_line(file_busline, &header_busline)) {
+        printf(ERROR_FOUND);
+        fclose(file_busline);
+        fclose(file_vehicle);
+        return false;
+    }
+
     DBBusLineRegister reg_busline;
     DBVehicleRegister reg_vehicle;
 
-    bool removed_vehicle, removed_busline;
+    uint32_t n_vehicle_registers = header_vehicle.meta.nroRegistros + header_vehicle.meta.nroRegRemovidos;
+    uint32_t n_busline_registers = header_busline.meta.nroRegistros + header_busline.meta.nroRegRemovidos;
 
     int n_matching = 0;
     // Loops and reads all the binary vehicle registers
-    while(read_vehicle_register(file_vehicle, &reg_vehicle)){
-        // Checks if the current vehicle register is removed
-        removed_vehicle = reg_vehicle.removido == '0';
-        
-        // Sets the bus line binary file to the start
-        fseek(file_busline, 0, SEEK_SET);
-        // Reads the header of the binary bus line file
-        DBBusLineHeader header_busline;
-        if (!read_header_bus_line(file_busline, &header_busline)) {
+    for (int i = 0; n_vehicle_registers; i++){
+        // Lê e verifica erros na leitura do registro de veículo.
+        if (!read_vehicle_register(file_vehicle, &reg_vehicle)) {
             printf(ERROR_FOUND);
             fclose(file_busline);
+            fclose(file_vehicle);
             return false;
         }
 
+        // Sets the bus line binary file to the start
+        if (i > 0) {
+            fseek(file_busline, BUS_LINE_HEADER_SIZE, SEEK_SET);
+        }
+
+        // Checks if the current vehicle register is removed
+        if (reg_vehicle.removido == '0')
+            continue;
+
         // Loops and reads all the registers in the binary bus line file
-        while(read_bus_line_register(file_busline, &reg_busline) && !removed_vehicle){
+        for (int j = 0; j < n_busline_registers; j++){
+            if (read_bus_line_register(file_busline, &reg_busline)) {
+                printf(ERROR_FOUND);
+                fclose(file_busline);
+                fclose(file_vehicle);
+                return false;
+            }
+
             // Checks if the current bus line register is removed
-            removed_busline = reg_busline.removido == '0';
+            bool removed_busline = reg_busline.removido == '0';
+
             // Prints the result if matches the criteria
             if(reg_vehicle.codLinha == reg_busline.codLinha && !removed_busline){
                 print_vehicle(stdout, &reg_vehicle, &header_vehicle);
@@ -489,71 +519,87 @@ bool join_vehicle_and_bus_line(const char *vehiclebin_fname, const char *busline
     // Closes the binary files
     fclose(file_busline);
     fclose(file_vehicle);
+
     // Prints an error message if no match if found
     return checks_matching(n_matching);
 }
 
 // TODO - alterar meus comentários em inglês, estava com o código de grafos na cabeça ainda
 /*
-* Exibe os resultados que satisfazem a busca de codLinha no arquivo binário de veículos e no arquivo binário de linhsa de ônibus 
+* Exibe os resultados que satisfazem a busca de codLinha no arquivo binário de veículos e
+* no arquivo binário de linha de ônibus
+*
 * @param vehiclebin_fname - caminho para o arquivo binário de veículos
 * @param buslinebin_fname - caminho para o arquivo binário de linhas de ônibus
 * @param index_btree_fname - caminho para o arquivo binário de índices árvore-B
-* @returns - um valor booleano = true se a leitura dos arquivos der certo e retornar algum resultado, false se a leitura dos arquivos der errado ou não retornar nenhum resultado da busca
+* @returns - um valor booleano = true se a leitura dos arquivos der certo e retornar algum
+*            resultado, false se a leitura dos arquivos der errado ou não retornar nenhum
+*            resultado da busca
 */
-bool join_vehicle_and_bus_line_using_btree(const char *vehiclebin_fname, const char *buslinebin_fname, const char *index_btree_fname){
-    FILE *file_vehicle = fopen(vehiclebin_fname, "r");
-    FILE *file_busline = fopen(buslinebin_fname, "r");
-    FILE *file_index_btree = fopen(index_btree_fname, "r");
-    
+bool join_vehicle_and_bus_line_using_btree(
+    const char *vehiclebin_fname,
+    const char *buslinebin_fname,
+    const char *index_btree_fname
+){
+    FILE *file_vehicle = fopen(vehiclebin_fname, "rb");
+    FILE *file_busline = fopen(buslinebin_fname, "rb");
+
     // Verifica se os caminho dos dois arquivos existem
     if(!checks_file(file_vehicle)) return false;
     if(!checks_file(file_busline)) return false;
-    if(!checks_file(file_index_btree)) return false;
 
-
-    DBVehicleHeader header_vehicle;
-    if (!read_header_vehicle(file_vehicle, &header_vehicle)) {
-        printf(ERROR_FOUND);
-        fclose(file_vehicle);
-        return false;
-    }
-    
     DBVehicleRegister reg_vehicle;
     BTreeMap btree = btree_new();
 
-    if (btree_load(&btree, index_btree_fname) != BTREE_OK)
-        return handle_error(file_busline, btree, NULL);
+    DBVehicleHeader header_vehicle;
+    if (!read_header_vehicle(file_vehicle, &header_vehicle)) {
+        fclose(file_busline);
+        return handle_error(file_vehicle, btree, "could not read header from %s", vehiclebin_fname);
+    }
 
-    bool removed_vehicle;
+    // Reads the header of the binary bus line file
+    DBBusLineHeader header_busline;
+    if (!read_header_bus_line(file_busline, &header_busline)) {
+        fclose(file_busline);
+        return handle_error(file_vehicle, btree, "could not read header from %s", vehiclebin_fname);
+    }
+
+    if (btree_load(&btree, index_btree_fname) != BTREE_OK) {
+        fclose(file_busline);
+        return handle_error(file_vehicle, btree, NULL);
+    }
+
+    uint32_t n_vehicle_registers = header_vehicle.meta.nroRegistros + header_vehicle.meta.nroRegRemovidos;
 
     int n_matching = 0;
     // Loops and reads all the binary vehicle registers
-    while(read_vehicle_register(file_vehicle, &reg_vehicle)){
+    for (int i = 0; i < n_vehicle_registers; i++){
+        if (!read_vehicle_register(file_vehicle, &reg_vehicle)) {
+            fclose(file_busline);
+            return handle_error(file_vehicle, btree, "failed to read register from %s", vehiclebin_fname);
+        }
+
         // Verifica se o atual registro veículo está marcado como removido. Se estiver, passa para a próxima iteração
-        removed_vehicle = reg_vehicle.removido == '0';
-        if(removed_vehicle)
+        if(reg_vehicle.removido == '0')
             continue;
 
         // Sets the bus line binary file to the start
         fseek(file_busline, 0, SEEK_SET);
-        // Reads the header of the binary bus line file
-        DBBusLineHeader header_busline;
-        if (!read_header_bus_line(file_busline, &header_busline)) {
-            printf(ERROR_FOUND);
-            fclose(file_busline);
-            return false;
-        }
 
         int64_t off = btree_get(&btree, reg_vehicle.codLinha);
-        if(btree_has_error(&btree))
+        if(btree_has_error(&btree)) {
+            fclose(file_busline);
             return handle_error(file_busline, btree, NULL);
+        }
+
         if(off >= 0){
             fseek(file_busline, off, SEEK_SET);
 
             DBBusLineRegister reg_busline;
-            if (!read_bus_line_register(file_busline, &reg_busline))
-                return handle_error(file_busline, btree, "failed to read bus line register");
+            if (!read_bus_line_register(file_busline, &reg_busline)) {
+                fclose(file_busline);
+                return handle_error(file_vehicle, btree, "failed to read bus line register");
+            }
 
             print_vehicle(stdout, &reg_vehicle, &header_vehicle);
             print_bus_line(stdout, &reg_busline, &header_busline);
@@ -565,7 +611,6 @@ bool join_vehicle_and_bus_line_using_btree(const char *vehiclebin_fname, const c
     // Closes the binary files
     fclose(file_busline);
     fclose(file_vehicle);
-    fclose(file_index_btree);
 
     // Prints an error message if no match if found
     return checks_matching(n_matching);
