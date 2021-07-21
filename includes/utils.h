@@ -41,6 +41,15 @@ char *alloc_vsprintf(const char *format, va_list ap);
  */
 char *read_word(FILE *in);
 
+/*
+* Função de ordenação mergesort, O(log_2(n))
+* @param data - endereço de memória a ser ordenado
+* @param s_items - tamanho dos itens que serão ordenados (geralmente passado por sizeof(data))
+* @param begin - inicio do intervalo de dados a serem ordenados
+* @param end - fim do intervalo de dados a serem ordenados (se for utilizado até a última posição de data, 
+                envie como len(data)-1 para evitar acesso a posicoes indevidas)
+* @param cmp - função de comparação
+*/
 void mergesort(void *data, int s_items, int begin, int end, __compare_function__ cmp);
 
 #endif

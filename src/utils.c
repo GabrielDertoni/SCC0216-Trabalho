@@ -62,45 +62,59 @@ char *read_word(FILE *in) {
     return string;
 }
 
+/*
+* Função auxiliar ao mergesort, realiza a ordenação dos itens
+* @param data - endereço de memória a ser ordenado
+* @param s_items - tamanho dos itens que serão ordenados (geralmente passado por sizeof(data))
+* @param begin - inicio do intervalo de dados a serem ordenados
+* @param half - meio do intervalo de dados a serem ordenados
+* @param end - fim do intervalo de dados a serem ordenados
+* @param cmp - função de comparação
+*/
 void merge(void *data, int s_items, int begin, int half, int end, __compare_function__ cmp){
     char *copy_data = malloc((end - begin + 1) * s_items);
     int i = begin, j = half+1, k = 0;
+    // Procura os menores itens entre a primeira e a segunda metade do intervalo
     while(i <= half && j <= end){
         int result = cmp(data, i, j);
-        if(result <= 0){
-            memcpy(&copy_data[k*s_items], &((char*)data)[i*s_items], s_items);
-            i++;
-        }
-        else{
-            memcpy(&copy_data[k*s_items], &((char*)data)[j*s_items], s_items);
-            j++;
-        }
-        k++;
+        if(result <= 0)
+            memcpy(&copy_data[(k++)*s_items], &((char*)data)[(i++)*s_items], s_items);
+        else
+            memcpy(&copy_data[(k++)*s_items], &((char*)data)[(j++)*s_items], s_items);
     }
 
-    while(i <= half){
-        memcpy(&copy_data[k*s_items], &((char*)data)[i*s_items], s_items);
-        i++;
-        k++;
-    }
+    // Copia os valores restantes da primeira metade, se tiver algum
+    while(i <= half)
+        memcpy(&copy_data[(k++)*s_items], &((char*)data)[(i++)*s_items], s_items);
 
-    while(j <= end){
-        memcpy(&copy_data[k*s_items], &((char*)data)[j*s_items], s_items);
-        j++;
-        k++;
-    }
-    for(int i = begin, k = 0; i <= end; i++, k++){
+    // Copia os valores restantes da segunda metade, se tiver algum
+    while(j <= end)
+        memcpy(&copy_data[(k++)*s_items], &((char*)data)[(j++)*s_items], s_items);
+
+    // Copia o intervalo ordenado de volta para o espaço de memória original
+    for(int i = begin, k = 0; i <= end; i++, k++)
         memcpy(&((char*)data)[i*s_items], &copy_data[k*s_items], s_items);
-    }
 
     free(copy_data);
 }
 
+/*
+* Função de ordenação mergesort, O(log_2(n))
+* @param data - endereço de memória a ser ordenado
+* @param s_items - tamanho dos itens que serão ordenados (geralmente passado por sizeof(data))
+* @param begin - inicio do intervalo de dados a serem ordenados
+* @param end - fim do intervalo de dados a serem ordenados (se for utilizado até a última posição de data, 
+                envie como len(data)-1 para evitar acesso a posicoes indevidas)
+* @param cmp - função de comparação
+*/
 void mergesort(void *data, int s_items, int begin, int end, __compare_function__ cmp){
     if(end <= begin)
         return;
+    // Divide o intervalo no meio
     int half = begin + (int)((end - begin) / 2);
+    // Divide em intervalos menores recursivamente
     mergesort(data, s_items, begin, half, cmp);
     mergesort(data, s_items, half+1, end, cmp);
+    // Ordena os intervalos
     merge(data, s_items, begin, half, end, cmp);
 }
