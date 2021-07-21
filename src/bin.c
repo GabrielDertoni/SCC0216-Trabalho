@@ -667,10 +667,14 @@ bool order_bus_line_bin_file(const char *bin_fname, const char *ordered_bin_fnam
 }
 
 bool merge_sorted(const char *vehicle_bin_fname, const char *busline_bin_fname) {
+    char *sorted_vehicle_bin_fname = alloc_sprintf("%s_ordenado", vehicle_bin_fname);
+    char *sorted_busline_bin_fname = alloc_sprintf("%s_ordenado", busline_bin_fname);
 
-    char *sorted_vehicle_bin_fname = (char *)malloc((strlen(vehicle_bin_fname) + 1) * sizeof(char));
-    char *sorted_busline_bin_fname = (char *)malloc((strlen(busline_bin_fname) + 1) * sizeof(char));
-    // TODO: Create sorted files from vehicle_bin_fname and busline_bin_fname
+    if (!order_vehicle_bin_file(vehicle_bin_fname, sorted_vehicle_bin_fname) ||
+        !order_bus_line_bin_file(busline_bin_fname, sorted_busline_bin_fname))
+    {
+        return false;
+    }
 
     FILE *sorted_vehicle_fp = fopen(sorted_vehicle_bin_fname, "rb");
 
@@ -715,9 +719,15 @@ bool merge_sorted(const char *vehicle_bin_fname, const char *busline_bin_fname) 
     uint32_t vehicle_count = 0;
     uint32_t busline_count = 0;
 
-    if (!read_vehicle_register(sorted_vehicle_fp, &reg_vehicle) ||
-        !read_bus_line_register(sorted_busline_fp, &reg_busline))
-    {
+    if (!read_vehicle_register(sorted_vehicle_fp, &reg_vehicle)) {
+        printf(ERROR_FOUND);
+        fclose(sorted_vehicle_fp);
+        fclose(sorted_busline_fp);
+        return false;
+    }
+
+    if (!read_bus_line_register(sorted_busline_fp, &reg_busline)) {
+        vehicle_drop(reg_vehicle);
         printf(ERROR_FOUND);
         fclose(sorted_vehicle_fp);
         fclose(sorted_busline_fp);
@@ -725,7 +735,6 @@ bool merge_sorted(const char *vehicle_bin_fname, const char *busline_bin_fname) 
     }
 
     while (vehicle_count < n_vehicle_registers && busline_count < n_busline_registers) {
-
         if (reg_vehicle.codLinha < reg_busline.codLinha) {
             vehicle_drop(reg_vehicle);
             if (!read_vehicle_register(sorted_vehicle_fp, &reg_vehicle)) {
