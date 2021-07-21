@@ -7,6 +7,7 @@
 #include <common.h>
 #include <bin.h>
 #include<parsing.h>
+#include<utils.h>
 
 // Macro que verifica se alguma expressão é igual a 1. Se ela não é, retorna
 // `false` da função.
@@ -38,6 +39,7 @@ bool write_header_meta(const DBMeta *meta, FILE *fp) {
 }
 
 bool write_vehicles_header(const DBVehicleHeader *header, FILE *fp) {
+    fseek(fp, 0, SEEK_SET);
     ASSERT(write_header_meta(&header->meta, fp));
     ASSERT(fwrite(&header->descrevePrefixo  , sizeof(header->descrevePrefixo)  , 1, fp));
     ASSERT(fwrite(&header->descreveData     , sizeof(header->descreveData)     , 1, fp));
@@ -95,7 +97,55 @@ bool write_vehicle(const Vehicle *vehicle, FILE *fp) {
     return true;
 }
 
+bool write_vehicle_registers(const DBVehicleRegister *vehicle, FILE *fp) {
+    char prefixo[5];
+
+    char removido;
+
+    if (vehicle->prefixo[0] == REMOVED_MARKER) {
+        removido = '0';
+        memcpy(prefixo, &vehicle->prefixo[1], sizeof(prefixo) - 1);
+        prefixo[4] = '\0';
+    } else {
+        removido = '1';
+        memcpy(prefixo, vehicle->prefixo, sizeof(prefixo));
+    }
+
+    uint32_t tamanhoModelo    = vehicle->modelo ? strlen(vehicle->modelo) : 0;
+    uint32_t tamanhoCategoria = vehicle->categoria ? strlen(vehicle->categoria) : 0;
+    uint32_t tamanhoRegistro  = 0;
+    tamanhoRegistro += sizeof(vehicle->prefixo);
+    tamanhoRegistro += sizeof(vehicle->data);
+    tamanhoRegistro += sizeof(vehicle->quantidadeLugares);
+    tamanhoRegistro += sizeof(vehicle->codLinha);
+    tamanhoRegistro += sizeof(tamanhoModelo);
+    tamanhoRegistro += tamanhoModelo;
+    tamanhoRegistro += sizeof(tamanhoCategoria);
+    tamanhoRegistro += tamanhoCategoria;
+
+    ASSERT(fwrite(&removido                  , sizeof(removido)                  , 1, fp));
+    ASSERT(fwrite(&tamanhoRegistro           , sizeof(tamanhoRegistro)           , 1, fp));
+    ASSERT(fwrite(prefixo                    , sizeof(vehicle->prefixo)          , 1, fp));
+    ASSERT(fwrite(vehicle->data              , sizeof(vehicle->data)             , 1, fp));
+    ASSERT(fwrite(&vehicle->quantidadeLugares, sizeof(vehicle->quantidadeLugares), 1, fp));
+    ASSERT(fwrite(&vehicle->codLinha         , sizeof(vehicle->codLinha)         , 1, fp));
+    ASSERT(fwrite(&tamanhoModelo             , sizeof(tamanhoModelo)             , 1, fp));
+
+    if (tamanhoModelo > 0) {
+        ASSERT(fwrite(vehicle->modelo        , tamanhoModelo * sizeof(char)      , 1, fp));
+    }
+
+    ASSERT(fwrite(&tamanhoCategoria          , sizeof(tamanhoCategoria)          , 1, fp));
+
+    if (tamanhoCategoria > 0) {
+        ASSERT(fwrite(vehicle->categoria     , tamanhoCategoria * sizeof(char)   , 1, fp));
+    }
+
+    return true;
+}
+
 bool write_bus_lines_header(const DBBusLineHeader *header, FILE *fp) {
+    fseek(fp, 0, SEEK_SET);
     ASSERT(write_header_meta(&header->meta, fp));
     ASSERT(fwrite(&header->descreveCodigo, sizeof(header->descreveCodigo), 1, fp));
     ASSERT(fwrite(&header->descreveCartao, sizeof(header->descreveCartao), 1, fp));
@@ -143,6 +193,47 @@ bool write_bus_line(const BusLine *line, FILE *fp) {
     }
     return true;
 }
+
+bool write_bus_line_register(const DBBusLineRegister *line, FILE *fp) {
+    int32_t codLinha;
+
+    char removido;
+    if (line->codLinha == REMOVED_MARKER) {
+        removido = '0';
+        codLinha = line->codLinha;
+    } else {
+        removido = '1';
+        codLinha = line->codLinha;
+    }
+
+    uint32_t tamanhoNome = line->nomeLinha ? strlen(line->nomeLinha) : 0;
+    uint32_t tamanhoCor  = line->corLinha ? strlen(line->corLinha) : 0;
+    uint32_t tamanhoRegistro = 0;
+    tamanhoRegistro += sizeof(codLinha);
+    tamanhoRegistro += sizeof(line->aceitaCartao);
+    tamanhoRegistro += sizeof(tamanhoNome);
+    tamanhoRegistro += tamanhoNome;
+    tamanhoRegistro += sizeof(tamanhoCor);
+    tamanhoRegistro += tamanhoCor;
+
+    ASSERT(fwrite(&removido          , sizeof(removido)          , 1, fp));
+    ASSERT(fwrite(&tamanhoRegistro   , sizeof(tamanhoRegistro)   , 1, fp));
+    ASSERT(fwrite(&codLinha          , sizeof(codLinha)          , 1, fp));
+    ASSERT(fwrite(&line->aceitaCartao, sizeof(line->aceitaCartao), 1, fp));
+    ASSERT(fwrite(&tamanhoNome       , sizeof(tamanhoNome)       , 1, fp));
+
+    if (tamanhoNome > 0) {
+        ASSERT(fwrite(line->nomeLinha, tamanhoNome * sizeof(char), 1, fp));
+    }
+
+    ASSERT(fwrite(&tamanhoCor        , sizeof(tamanhoCor)        , 1, fp));
+
+    if (tamanhoCor > 0) {
+        ASSERT(fwrite(line->corLinha , tamanhoCor * sizeof(char) , 1, fp));
+    }
+    return true;
+}
+
 
 // Lê os metadados dos arquivos binários
 bool read_meta(FILE *fp, DBMeta *meta){
@@ -469,5 +560,108 @@ bool select_from_bus_line_where(const char *from_file, const char *where_field, 
         return false;
     }
 
+    return true;
+}
+
+int32_t access_vehicle_register(void *data, int32_t i, int32_t j){
+    DBVehicleRegister *vehicle = (DBVehicleRegister*)data;
+    if(vehicle[i].codLinha < vehicle[j].codLinha) return -1;
+    else if(vehicle[i].codLinha == vehicle[j].codLinha) return 0;
+    else return 1;
+}
+
+int32_t access_busline_register(void *data, int32_t i, int32_t j){
+    DBBusLineRegister *bus_line = (DBBusLineRegister*)data;
+    if(bus_line[i].codLinha < bus_line[j].codLinha) return -1;
+    else if(bus_line[i].codLinha == bus_line[j].codLinha) return 0;
+    else return 1;
+}
+
+bool order_vehicle_bin_file(const char *bin_fname, const char *ordered_bin_fname){
+    FILE *bin_file = fopen(bin_fname, "rb");
+    FILE *ordered_file = fopen(ordered_bin_fname, "wb");
+
+    if(!check_file(bin_file)) return false;
+    if(!check_file(ordered_file)) return false;
+
+    DBVehicleHeader header;
+    if (!read_header_vehicle(bin_file, &header)) {
+        printf(ERROR_FOUND);
+        fclose(bin_file);
+        return false;
+    }
+
+    DBVehicleRegister static_reg, *reg = malloc(header.meta.nroRegistros * sizeof(DBVehicleRegister));
+    int32_t i = 0;
+    while (read_vehicle_register(bin_file, &static_reg)){
+        if(static_reg.removido != '0'){
+            memcpy(&reg[i++], &static_reg, sizeof(DBVehicleRegister));
+        }
+    }
+
+    header.meta.nroRegRemovidos = 0;
+    header.meta.nroRegistros = i;
+    mergesort(reg, sizeof(DBVehicleRegister), 0, i-1, access_vehicle_register);
+    fseek(ordered_file, VEHICLE_HEADER_SIZE, SEEK_SET);
+
+    for(int j = 0; j < i; j++){
+        if(!write_vehicle_registers(&reg[j], ordered_file)) return false;
+    }
+
+    header.meta.byteProxReg = ftell(ordered_file);
+
+    if(!write_vehicles_header(&header, ordered_file)){
+        printf(ERROR_FOUND);
+        fclose(ordered_file);
+        return false;
+    }   
+
+    free(reg);
+    fclose(bin_file);
+    fclose(ordered_file);
+    return true;
+}
+
+bool order_bus_line_bin_file(const char *bin_fname, const char *ordered_bin_fname){
+    FILE *bin_file = fopen(bin_fname, "r");
+    FILE *ordered_file = fopen(ordered_bin_fname, "w");
+
+    if(!check_file(bin_file)) return false;
+    if(!check_file(ordered_file)) return false;
+
+    DBBusLineHeader header;
+    if (!read_header_bus_line(bin_file, &header)) {
+        printf(ERROR_FOUND);
+        fclose(bin_file);
+        return false;
+    }
+
+    DBBusLineRegister static_reg, *reg = malloc(header.meta.nroRegistros * sizeof(DBBusLineRegister));
+    int32_t i = 0;
+    while (read_bus_line_register(bin_file, &static_reg)){
+        if(static_reg.removido != '0')
+            memcpy(&reg[i++], &static_reg, sizeof(DBBusLineRegister));
+    }
+
+    header.meta.nroRegRemovidos = 0;
+    header.meta.nroRegistros = i;
+    mergesort(reg, sizeof(DBBusLineRegister), 0, i-1, access_busline_register);
+    fseek(ordered_file, BUS_LINE_HEADER_SIZE, SEEK_SET);
+
+    for(int j = 0; j < i; j++){
+        if(!write_bus_line_register(&reg[j], ordered_file)) return false;
+    }
+
+    header.meta.byteProxReg = ftell(ordered_file);
+
+    if(!write_bus_lines_header(&header, ordered_file)){
+        printf(ERROR_FOUND);
+        fclose(ordered_file);
+        return false;
+    }   
+
+    free(reg);
+    fclose(bin_file);
+    fclose(ordered_file);
     return true;
 }

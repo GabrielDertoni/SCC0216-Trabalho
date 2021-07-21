@@ -7,6 +7,8 @@
 
 #include <stdio.h>
 
+typedef int32_t(*__compare_function__)(void*, int32_t, int32_t);
+
 /**
  * Aloca uma string com os conteúdos que seriam impressos pela função `printf`.
  * A string retornada precisa ser liberada com `free`.
@@ -38,5 +40,7 @@ char *alloc_vsprintf(const char *format, va_list ap);
  * @return uma string dinâmicamente alocada que contém uma palavra lida de `in`.
  */
 char *read_word(FILE *in);
+
+void mergesort(void *data, int s_items, int begin, int end, __compare_function__ cmp);
 
 #endif
