@@ -478,7 +478,7 @@ bool join_vehicle_and_bus_line(const char *vehiclebin_fname, const char *busline
 
     int n_matching = 0;
     // Loops and reads all the binary vehicle registers
-    for (int i = 0; n_vehicle_registers; i++){
+    for (int i = 0; i < n_vehicle_registers; i++){
         // Lê e verifica erros na leitura do registro de veículo.
         if (!read_vehicle_register(file_vehicle, &reg_vehicle)) {
             printf(ERROR_FOUND);
@@ -488,9 +488,7 @@ bool join_vehicle_and_bus_line(const char *vehiclebin_fname, const char *busline
         }
 
         // Sets the bus line binary file to the start
-        if (i > 0) {
-            fseek(file_busline, BUS_LINE_HEADER_SIZE, SEEK_SET);
-        }
+        fseek(file_busline, BUS_LINE_HEADER_SIZE, SEEK_SET);
 
         // Checks if the current vehicle register is removed
         if (reg_vehicle.removido == '0')
@@ -498,7 +496,7 @@ bool join_vehicle_and_bus_line(const char *vehiclebin_fname, const char *busline
 
         // Loops and reads all the registers in the binary bus line file
         for (int j = 0; j < n_busline_registers; j++){
-            if (read_bus_line_register(file_busline, &reg_busline)) {
+            if (!read_bus_line_register(file_busline, &reg_busline)) {
                 printf(ERROR_FOUND);
                 fclose(file_busline);
                 fclose(file_vehicle);

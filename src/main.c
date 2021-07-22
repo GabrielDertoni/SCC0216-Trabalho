@@ -21,24 +21,25 @@
 
 // Enum contendo os valores de cada operacao implementada no trabalho
 typedef enum {
-    OP_CREATE_TABLE_VEHICLE             =  1,
-    OP_CREATE_TABLE_BUS_LINE            =  2,
-    OP_SELECT_FROM_VEHICLE              =  3,
-    OP_SELECT_FROM_BUS_LINE             =  4,
-    OP_SELECT_FROM_VEHICLE_WHERE        =  5,
-    OP_SELECT_FROM_BUS_LINE_WHERE       =  6,
-    OP_INSERT_INTO_VEHICLE              =  7,
-    OP_INSERT_INTO_BUS_LINE             =  8,
-    OP_CREATE_INDEX_VEHICLE             =  9,
-    OP_CREATE_INDEX_BUS_LINE            = 10,
-    OP_SEARCH_FOR_VEHICLE               = 11,
-    OP_SEARCH_FOR_BUS_LINE              = 12,
-    OP_INSERT_AND_INDEX_VEHICLE         = 13,
-    OP_INSERT_AND_INDEX_BUS_LINE        = 14,
-    OP_JOIN_VEHICLE_AND_BUS_LINE        = 15,
-    OP_JOIN_VEHICLE_AND_BUS_LINE_BTREE  = 16,
-    OP_ORDER_VEHICLE_BIN_FILE           = 17,
-    OP_ORDER_BUS_LINE_BIN_FILE          = 18,
+    OP_CREATE_TABLE_VEHICLE                 =  1,
+    OP_CREATE_TABLE_BUS_LINE                =  2,
+    OP_SELECT_FROM_VEHICLE                  =  3,
+    OP_SELECT_FROM_BUS_LINE                 =  4,
+    OP_SELECT_FROM_VEHICLE_WHERE            =  5,
+    OP_SELECT_FROM_BUS_LINE_WHERE           =  6,
+    OP_INSERT_INTO_VEHICLE                  =  7,
+    OP_INSERT_INTO_BUS_LINE                 =  8,
+    OP_CREATE_INDEX_VEHICLE                 =  9,
+    OP_CREATE_INDEX_BUS_LINE                = 10,
+    OP_SEARCH_FOR_VEHICLE                   = 11,
+    OP_SEARCH_FOR_BUS_LINE                  = 12,
+    OP_INSERT_AND_INDEX_VEHICLE             = 13,
+    OP_INSERT_AND_INDEX_BUS_LINE            = 14,
+    OP_JOIN_VEHICLE_AND_BUS_LINE            = 15,
+    OP_JOIN_VEHICLE_AND_BUS_LINE_BTREE      = 16,
+    OP_ORDER_VEHICLE_BIN_FILE               = 17,
+    OP_ORDER_BUS_LINE_BIN_FILE              = 18,
+    OP_JOIN_ORDERED_VEHICLE_AND_BUS_LINE    = 19,
 } Op;
 
 int main(void){
@@ -126,6 +127,13 @@ int main(void){
             uint32_t code;
             scanf(" %d", &code);
             search_for_bus_line(file_name, input1, code);
+            break;
+
+        case OP_JOIN_ORDERED_VEHICLE_AND_BUS_LINE:
+            input1 = read_word(stdin);
+            free(read_word(stdin));
+            free(read_word(stdin));
+            merge_sorted(file_name, input1);
             break;
         }
 
