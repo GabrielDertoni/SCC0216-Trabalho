@@ -168,6 +168,7 @@ char *read_until(FILE *in, const char *delim) {
         // retornamos ele à entrada.
         ungetc(chr, in);
     }
+    string[len] = '\0';
 
     return string;
 }
