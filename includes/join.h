@@ -31,6 +31,6 @@ bool join_vehicle_and_bus_line_using_btree(const char *vehiclebin_fname, const c
  * @returns - um valor booleano = true deu tudo certo, false algum erro ocorreu
  *            (uma mensagem de erro será exibida).
  */
-bool merge_sorted(const char *vehicle_bin_fname, const char *busline_bin_fname);
+bool join_vehicle_and_bus_line_merge_sorted(const char *vehicle_bin_fname, const char *busline_bin_fname);
 
 #endif

@@ -195,7 +195,7 @@ int main(void){
             input1 = read_word(stdin);
             ignore_word(stdin);
             ignore_word(stdin);
-            merge_sorted(file_name, input1);
+            join_vehicle_and_bus_line_merge_sorted(file_name, input1);
             break;
     }
 

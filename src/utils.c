@@ -272,3 +272,4 @@ void mergesort(void *data, int s_items, int begin, int end, __compare_function__
     // Ordena os intervalos
     merge(data, s_items, begin, half, end, cmp);
 }
+
