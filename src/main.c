@@ -129,14 +129,6 @@ int main(void){
             search_for_bus_line(file_name, input1, code);
             break;
 
-        case OP_JOIN_ORDERED_VEHICLE_AND_BUS_LINE:
-            input1 = read_word(stdin);
-            free(read_word(stdin));
-            free(read_word(stdin));
-            merge_sorted(file_name, input1);
-            break;
-        }
-
         case OP_INSERT_AND_INDEX_VEHICLE:
             // O nome do arquivo de índice
             input1 = read_word(stdin);
@@ -195,6 +187,15 @@ int main(void){
             if(order_bus_line_bin_file(file_name, input1))
                 binarioNaTela(input1);
             break;
+
+        case OP_JOIN_ORDERED_VEHICLE_AND_BUS_LINE:
+            input1 = read_word(stdin);
+            free(read_word(stdin));
+            free(read_word(stdin));
+            merge_sorted(file_name, input1);
+            break;
+        }
+
     }
 
     if (file_name != NULL)
