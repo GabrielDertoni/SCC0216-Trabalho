@@ -111,6 +111,4 @@ bool order_vehicle_bin_file(const char *bin_fname, const char *ordered_bin_fname
 */
 bool order_bus_line_bin_file(const char *bin_fname, const char *ordered_bin_fname);
 
-bool merge_sorted(const char *vehicle_bin_fname, const char *busline_bin_fname);
-
 #endif

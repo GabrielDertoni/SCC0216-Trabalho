@@ -1,17 +1,20 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
-#include<string.h>
-#include<utils.h>
+#include <string.h>
+#include <stdbool.h>
 
-#define QUOTE 34
-#define SPACE 32
-#define BREAK_LINE 10
-#define CARRIAGE_RETURN 13
-#define and &&
+#include <utils.h>
 
-#define BUFFER 256
-
+/**
+ * Mesmo que `alloc_sprintf` mas toma uma `va_list` ao invés de múltiplos
+ * argumentos.
+ *
+ * @param format - o formato da mensagem de acordo com o formato `printf`.
+ * @param ap - a lista de argumentos.
+ * @return uma string dinamicamente alocada com os conteúdos que seriam
+ *         imprimidos pela função `printf`.
+ */
 char *alloc_vsprintf(const char *format, va_list ap) {
     va_list ap_cpy;
     va_copy(ap_cpy, ap);
@@ -31,6 +34,15 @@ char *alloc_vsprintf(const char *format, va_list ap) {
     return s;
 }
 
+/**
+ * Aloca uma string com os conteúdos que seriam impressos pela função `printf`.
+ * A string retornada precisa ser liberada com `free`.
+ *
+ * @param format - o formatado da mensagem de acordo como formato `printf`.
+ * @param ... - parâmetros com os valores que devem ser impressos.
+ * @return uma string dinamicamente alocada com os conteúdos que seriam
+ *         imprimidos pela função `printf`.
+ */
 char *alloc_sprintf(const char *format, ...) {
     va_list ap;
     va_start(ap, format);
@@ -41,25 +53,167 @@ char *alloc_sprintf(const char *format, ...) {
     return s;
 }
 
+/**
+ * Lê uma única palavra da entrada padrão separada por espaços e retorna uma
+ * string dinamicamente alocada para ela. A string retornada precisa ser
+ * liberada com `free`.
+ *
+ * @param in - o _file pointer_ que será lido.
+ * @return uma string dinamicamente alocada que contém uma palavra lida de `in`.
+ */
 char *read_word(FILE *in) {
+    ignore_some(in, " ");
+
+    // Espia o próximo caractere da entrada, se ele for EOF, não há string a ser
+    // lida, se for `"`, temos uma string entre aspas e queremos somente a
+    // string dentro e não as aspas, isso inclui espaços que estejam dentro das
+    // aspas. Se não for uma string entre aspas, retornamos o caractere espiado
+    // para a entrada e lemos tudo até o próximo espaço ou quebra de linha.
+
+    int peek = getc(in);
+    bool has_open_quote = true;
+
+    if (peek == EOF) {
+        return NULL;
+    } else if (peek != '"') {
+        ungetc(peek, in);
+        has_open_quote = false;
+    }
+
+    char *string;
+    if (has_open_quote) {
+        // Lê tudo até o fecha aspas, não possui suporte para _escape sequences_.
+        string = read_until(in, "\"");
+
+        // Consome o fecha aspas.
+        getc(in);
+    } else {
+        string = read_until(in, " \r\n");
+    }
+    return string;
+}
+
+/**
+ * Lê uma única palavra da entrada padrão separada por espaços e descarta o que
+ * for lido e retorna o número de caracteres ignorados.  Essa função também
+ * ignora aspas.
+ *
+ * @param in - o _file pointer_ que será lido.
+ * @return o número de caracteres ignorados do arquivo `in`.
+ */
+int ignore_word(FILE *in) {
+    ignore_some(in, " ");
+
+    // Espia o próximo caractere da entrada, se ele for EOF, não há string a ser
+    // lida, se for `"`, temos uma string entre aspas e queremos somente a
+    // string dentro e não as aspas, isso inclui espaços que estejam dentro das
+    // aspas. Se não for uma string entre aspas, retornamos o caractere espiado
+    // para a entrada e lemos tudo até o próximo espaço ou quebra de linha.
+
+    int peek = getc(in);
+    bool has_open_quote = true;
+    int count = 1;
+
+    if (peek == EOF) {
+        return count - 1;
+    } else if (peek != '"') {
+        ungetc(peek, in);
+        has_open_quote = false;
+        count--;
+    }
+
+    if (has_open_quote) {
+        // Lê tudo até o fecha aspas, não possui suporte para _escape sequences_.
+        count += ignore_until(in, "\"");
+
+        // Consome o fecha aspas.
+        getc(in);
+        count += 1;
+    } else {
+        count += ignore_until(in, " \r\n");
+    }
+    return count;
+}
+
+/**
+ * Lê até que algum delimitador seja encontrado. Retorna o que foi lido. Essa
+ * função não consome o caractere delimitador da entrada. A string é
+ * dinamicamente alocada e precisa ser liberada com `free`.
+ *
+ * @param in - arquivo de onde ler.
+ * @param delim - string com todos os delimitadores que são condição de parada
+ *                da leitura.
+ * @returns a string lida.
+ */
+char *read_until(FILE *in, const char *delim) {
     char *string = NULL;
     size_t len = 0;
-    int character;
+    size_t cap = 0;
+    int chr;
 
-    do {
-        if(len % BUFFER == 0)
-            string = realloc(string, (len / BUFFER + 1) * BUFFER + 1);
+    // Lê até que `strchr(delim, chr)` seja `NULL`, ou EOF seja encontrado. Ou
+    // seja, somente quando `chr` não for encontrado em `delim`, paramos a
+    // leitura, ou se chegarmos no fim da entrada.
+    for (chr = getc(in); chr != EOF && !strchr(delim, chr); chr = getc(in)) {
+        if (len >= cap) {
+            cap = cap == 0 ? 16 : cap * 2;
+            string = (char *)realloc(string, (cap + 1) * sizeof(char));
+        }
+        string[len++] = chr;
+    }
 
-        character = fgetc(in);
+    if (chr != EOF) {
+        // `chr` é um caractere delimitador, não queremos consumir esse
+        // caractere já que ele pode ser usado em outra situação, então
+        // retornamos ele à entrada.
+        ungetc(chr, in);
+    }
 
-        if(character != CARRIAGE_RETURN and character != QUOTE)
-            string[len++] = character;
-
-    } while (character != SPACE and character != BREAK_LINE and character != EOF);
-
-    string[len-1] = '\0';
-    string = realloc(string, len);
     return string;
+}
+
+/**
+ * Lê até que algum delimitador seja encontrado. Descarta os caracteres lidos.
+ * Essa função não consome o caractere delimitador da entrada.
+ *
+ * @param in - arquivo de onde ler.
+ * @param delim - string com todos os delimitadores que são condição de parada
+ *                da leitura.
+ */
+int ignore_until(FILE *in, const char *delim) {
+    int count = 0;
+    int chr;
+
+    for (chr = getc(in); chr != EOF && !strchr(delim, chr); chr = getc(in)) {
+        count++;
+    }
+
+    if (chr != EOF) {
+        ungetc(chr, in);
+    }
+    return count;
+}
+
+/**
+ * Lê apenas alguns caracteres. Descarta os caracteres lidos. Essa função
+ * consome apenas caracteres contidos em `chars`.
+ *
+ * @param in - arquivo de onde ler.
+ * @param chars - apenas caracteres contidos em `chars` serão lidos por essa
+ *                função.
+ */
+int ignore_some(FILE *in, const char *chars) {
+    int count = 0;
+    int chr;
+
+    for (chr = getc(in); chr != EOF && strchr(chars, chr); chr = getc(in)) {
+        count++;
+    }
+
+    if (chr != EOF) {
+        ungetc(chr, in);
+    }
+    return count;
 }
 
 /*

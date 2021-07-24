@@ -64,21 +64,4 @@ bool csv_append_to_bin_and_index_vehicle(const char *bin_fname, const char *inde
  */
 bool csv_append_to_bin_and_index_bus_line(const char *bin_fname, const char *index_fname);
 
-/*
-* Exibe os resultados que satisfazem a busca de codLinha no arquivo binário de veículos e no arquivo binário de linhsa de ônibus 
-* @param vehiclebin_fname - caminho para o arquivo binário de veículos
-* @param buslinebin_fname - caminho para o arquivo binário de linhas de ônibus
-* @returns - um valor booleano = true se a leitura dos arquivos der certo e retornar algum resultado, false se a leitura dos arquivos der errado ou não retornar nenhum resultado da busca
-*/
-bool join_vehicle_and_bus_line(const char *vehiclebin_fname, const char *buslinebin_fname);
-
-/*
-* Exibe os resultados que satisfazem a busca de codLinha no arquivo binário de veículos e no arquivo binário de linhsa de ônibus 
-* @param vehiclebin_fname - caminho para o arquivo binário de veículos
-* @param buslinebin_fname - caminho para o arquivo binário de linhas de ônibus
-* @param index_btree_fname - caminho para o arquivo binário de índices árvore-B
-* @returns - um valor booleano = true se a leitura dos arquivos der certo e retornar algum resultado, false se a leitura dos arquivos der errado ou não retornar nenhum resultado da busca
-*/
-bool join_vehicle_and_bus_line_using_btree(const char *vehiclebin_fname, const char *buslinebin_fname, const char *index_btree_fname);
-
 #endif

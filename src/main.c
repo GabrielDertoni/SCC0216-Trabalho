@@ -12,14 +12,14 @@
 #include <string.h>
 
 #include <common.h>
-#include <csv_to_bin.h>
-#include <utils.h>
-#include <index.h>
-#include <btree.h>
-#include <bin.h>
 #include <external.h>
+#include <utils.h>
+#include <bin.h>
+#include <csv_to_bin.h>
+#include <index.h>
+#include <join.h>
 
-// Enum contendo os valores de cada operacao implementada no trabalho
+// Enum contendo os valores de cada operação implementada no trabalho
 typedef enum {
     OP_CREATE_TABLE_VEHICLE                 =  1,
     OP_CREATE_TABLE_BUS_LINE                =  2,
@@ -112,7 +112,8 @@ int main(void){
 
         case OP_SEARCH_FOR_VEHICLE: {
             input1 = read_word(stdin);
-            input2 = read_word(stdin); // Garantido de ser "prefixo"
+            // Garantido de ser "prefixo"
+            ignore_word(stdin);
 
             char prefixo[6];
             scanf("\"%[^\"]s\"", prefixo);
@@ -122,12 +123,14 @@ int main(void){
 
         case OP_SEARCH_FOR_BUS_LINE: {
             input1 = read_word(stdin);
-            input2 = read_word(stdin); // Garantido de ser "codLinha"
+            // Garantido de ser "codLinha"
+            ignore_word(stdin);
 
             uint32_t code;
             scanf(" %d", &code);
             search_for_bus_line(file_name, input1, code);
             break;
+        }
 
         case OP_INSERT_AND_INDEX_VEHICLE:
             // O nome do arquivo de índice
@@ -135,7 +138,7 @@ int main(void){
 
             // Se trata do número de registros a serem inseridos. Entretanto,
             // lemos até o EOF, então podemos ignorar essa entrada.
-            input2 = read_word(stdin);
+            ignore_word(stdin);
 
             if (csv_append_to_bin_and_index_vehicle(file_name, input1))
                 binarioNaTela(input1);
@@ -148,7 +151,7 @@ int main(void){
 
             // Se trata do número de registros a serem inseridos. Entretanto,
             // lemos até o EOF, então podemos ignorar essa entrada.
-            input2 = read_word(stdin);
+            ignore_word(stdin);
 
             if (csv_append_to_bin_and_index_bus_line(file_name, input1))
                 binarioNaTela(input1);
@@ -158,16 +161,16 @@ int main(void){
         case OP_JOIN_VEHICLE_AND_BUS_LINE:
             input1 = read_word(stdin);
             // Consome a entrada dos campos 'codLinha'
-            free(read_word(stdin));
-            free(read_word(stdin));
+            ignore_word(stdin);
+            ignore_word(stdin);
             join_vehicle_and_bus_line(file_name, input1);
             break;
 
         case OP_JOIN_VEHICLE_AND_BUS_LINE_BTREE:
             input1 = read_word(stdin);
             // Consome a entrada dos campos 'codLinha'
-            free(read_word(stdin));
-            free(read_word(stdin));
+            ignore_word(stdin);
+            ignore_word(stdin);
             input2 = read_word(stdin);
             join_vehicle_and_bus_line_using_btree(file_name, input1, input2);
             break;
@@ -175,7 +178,7 @@ int main(void){
         case OP_ORDER_VEHICLE_BIN_FILE:
             input1 = read_word(stdin);
             // Consome 'campoOrdenacao'
-            free(read_word(stdin));
+            ignore_word(stdin);
             if(order_vehicle_bin_file(file_name, input1))
                 binarioNaTela(input1);
             break;
@@ -183,19 +186,17 @@ int main(void){
         case OP_ORDER_BUS_LINE_BIN_FILE:
             input1 = read_word(stdin);
             // Consome 'campoOrdenacao'
-            free(read_word(stdin));
+            ignore_word(stdin);
             if(order_bus_line_bin_file(file_name, input1))
                 binarioNaTela(input1);
             break;
 
         case OP_JOIN_ORDERED_VEHICLE_AND_BUS_LINE:
             input1 = read_word(stdin);
-            free(read_word(stdin));
-            free(read_word(stdin));
+            ignore_word(stdin);
+            ignore_word(stdin);
             merge_sorted(file_name, input1);
             break;
-        }
-
     }
 
     if (file_name != NULL)
