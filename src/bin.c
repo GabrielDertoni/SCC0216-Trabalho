@@ -723,8 +723,131 @@ bool merge_sorted(const char *vehicle_bin_fname, const char *busline_bin_fname) 
     char *sorted_vehicle_bin_fname = alloc_sprintf("%s_ordenado", vehicle_bin_fname);
     char *sorted_busline_bin_fname = alloc_sprintf("%s_ordenado", busline_bin_fname);
 
-    if(!order_vehicle_bin_file(vehicle_bin_fname, sorted_vehicle_bin_fname)) return false;
-    if(!order_bus_line_bin_file(busline_bin_fname, sorted_busline_bin_fname)) return false;
-    if(!join_vehicle_and_bus_line(sorted_vehicle_bin_fname, sorted_busline_bin_fname)) return false;
+    if (!order_vehicle_bin_file(vehicle_bin_fname, sorted_vehicle_bin_fname) ||
+        !order_bus_line_bin_file(busline_bin_fname, sorted_busline_bin_fname))
+    {
+        return false;
+    }
+
+    FILE *sorted_vehicle_fp = fopen(sorted_vehicle_bin_fname, "rb");
+
+    if (!check_file(sorted_vehicle_fp)) {
+        return false;
+    }
+
+    FILE *sorted_busline_fp = fopen(sorted_busline_bin_fname, "rb");
+
+    if (!check_file(sorted_busline_fp)) {
+        fclose(sorted_vehicle_fp);
+        return false;
+    }
+
+    DBVehicleHeader header_vehicle;
+    if (!read_header_vehicle(sorted_vehicle_fp, &header_vehicle)) {
+        printf(ERROR_FOUND);
+        fclose(sorted_vehicle_fp);
+        fclose(sorted_busline_fp);
+        return false;
+    }
+
+    // Reads the header of the binary bus line file
+    DBBusLineHeader header_busline;
+    if (!read_header_bus_line(sorted_busline_fp, &header_busline)) {
+        printf(ERROR_FOUND);
+        fclose(sorted_vehicle_fp);
+        fclose(sorted_busline_fp);
+        return false;
+    }
+
+    DBBusLineRegister reg_busline;
+    DBVehicleRegister reg_vehicle;
+
+    uint32_t n_vehicle_registers = header_vehicle.meta.nroRegistros;
+    uint32_t n_busline_registers = header_busline.meta.nroRegistros;
+
+    if (n_vehicle_registers == 0 || n_busline_registers == 0) {
+        fclose(sorted_vehicle_fp);
+        fclose(sorted_busline_fp);
+        return true;
+    }
+
+    if (!read_vehicle_register(sorted_vehicle_fp, &reg_vehicle)) {
+        printf(ERROR_FOUND);
+        fclose(sorted_vehicle_fp);
+        fclose(sorted_busline_fp);
+        return false;
+    }
+
+    if (!read_bus_line_register(sorted_busline_fp, &reg_busline)) {
+        vehicle_drop(reg_vehicle);
+        printf(ERROR_FOUND);
+        fclose(sorted_vehicle_fp);
+        fclose(sorted_busline_fp);
+        return false;
+    }
+
+    uint32_t vehicle_count = 1;
+    uint32_t busline_count = 1;
+
+    uint32_t n_matching = 0;
+
+    while (vehicle_count < n_vehicle_registers && busline_count <= n_busline_registers) {
+        if (reg_vehicle.codLinha < reg_busline.codLinha) {
+            vehicle_drop(reg_vehicle);
+            if (!read_vehicle_register(sorted_vehicle_fp, &reg_vehicle)) {
+                printf("expected %d vehicle registers but got %d\n", n_vehicle_registers, vehicle_count);
+                printf(ERROR_FOUND);
+                bus_line_drop(reg_busline);
+                fclose(sorted_vehicle_fp);
+                fclose(sorted_busline_fp);
+                return false;
+            }
+            vehicle_count++;
+
+        } else if (reg_vehicle.codLinha > reg_busline.codLinha) {
+            if (busline_count >= n_busline_registers) break;
+
+            bus_line_drop(reg_busline);
+            if (!read_bus_line_register(sorted_busline_fp, &reg_busline)) {
+                printf("expected %d busline registers but got %d\n", n_busline_registers, busline_count);
+                printf(ERROR_FOUND);
+                vehicle_drop(reg_vehicle);
+                fclose(sorted_vehicle_fp);
+                fclose(sorted_busline_fp);
+                return false;
+            }
+            busline_count++;
+
+        } else {
+            n_matching++;
+            print_vehicle(stdout, &reg_vehicle, &header_vehicle);
+            print_bus_line(stdout, &reg_busline, &header_busline);
+            printf("\n");
+
+            if (vehicle_count >= n_vehicle_registers && busline_count >= n_busline_registers) {
+                break;
+            }
+
+            vehicle_drop(reg_vehicle);
+
+            if (!read_vehicle_register(sorted_vehicle_fp, &reg_vehicle)) {
+                bus_line_drop(reg_busline);
+                fclose(sorted_vehicle_fp);
+                fclose(sorted_busline_fp);
+                return false;
+            }
+            vehicle_count++;
+        }
+    }
+
+    if (n_matching == 0) {
+        printf(NO_REGISTER);
+    }
+
+    vehicle_drop(reg_vehicle);
+    bus_line_drop(reg_busline);
+
+    fclose(sorted_vehicle_fp);
+    fclose(sorted_busline_fp);
     return true;
 }
