@@ -26,8 +26,6 @@ static inline bool vhandle_error(FILE *restrict to_close1, FILE *restrict to_clo
         fprintf(stderr, "Error: ");
         vfprintf(stderr, format, ap);
         fprintf(stderr, ".\n");
-    } else {
-        fprintf(stderr, "Error: unexpected.\n");
     }
 #else
     printf(ERROR_FOUND);
@@ -90,6 +88,7 @@ static inline bool handle_error_btree(
         fprintf(stderr, "Error: %s.\n", btree_get_error(&failed_btree));
     }
 #endif
+    btree_drop(failed_btree);
 
     vhandle_error(to_close1, to_close2, format, ap);
 
@@ -389,7 +388,7 @@ bool join_vehicle_and_bus_line_merge_sorted(const char *vehicle_bin_fname, const
 
     // Zera os registros para garantir que não tenha lixo de memória. Isso
     // também garante que `reg_vehicle.codLinha` e `reg_busline.codLinha` são 0.
-    // memset(&reg_vehicle, 0, sizeof(DBVehicleRegister));
+    memset(&reg_vehicle, 0, sizeof(DBVehicleRegister));
     memset(&reg_busline, 0, sizeof(DBBusLineRegister));
 
     // Itera pelos registros de maneira intercalada. Enquanto os códigos de
