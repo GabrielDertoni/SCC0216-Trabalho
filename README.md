@@ -36,6 +36,12 @@ com o índice de BTree estão definidos no módulo `index`. Isso inclui as
 funcionalidades 13 e 14 que funcionam de maneira similar às funcionalidades 7 e 8.
 Mesmo que a 7 e 8 estejam presentes em `csv_to_bin`.
 
+## Trabalho 3
+
+No trabalho 3, o módulo `sort` implementa as funcionalidades de ordenação e o
+módulo `join` implementa as operações de join. Ou seja, as funcionalidades 15,
+16 e 19 estão no `join` e a 17 e 18 no `sort`.
+
 ## Uso do Makefile
 
 ### Compilando e executando o binário
