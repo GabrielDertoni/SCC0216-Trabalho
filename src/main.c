@@ -15,6 +15,7 @@
 #include <external.h>
 #include <utils.h>
 #include <bin.h>
+#include <sort.h>
 #include <csv_to_bin.h>
 #include <index.h>
 #include <join.h>
@@ -37,8 +38,8 @@ typedef enum {
     OP_INSERT_AND_INDEX_BUS_LINE            = 14,
     OP_JOIN_VEHICLE_AND_BUS_LINE            = 15,
     OP_JOIN_VEHICLE_AND_BUS_LINE_BTREE      = 16,
-    OP_ORDER_VEHICLE_BIN_FILE               = 17,
-    OP_ORDER_BUS_LINE_BIN_FILE              = 18,
+    OP_SORT_VEHICLE_BIN_FILE                = 17,
+    OP_SORT_BUS_LINE_BIN_FILE               = 18,
     OP_JOIN_ORDERED_VEHICLE_AND_BUS_LINE    = 19,
 } Op;
 
@@ -175,19 +176,19 @@ int main(void){
             join_vehicle_and_bus_line_using_btree(file_name, input1, input2);
             break;
 
-        case OP_ORDER_VEHICLE_BIN_FILE:
+        case OP_SORT_VEHICLE_BIN_FILE:
             input1 = read_word(stdin);
             // Consome 'campoOrdenacao'
             ignore_word(stdin);
-            if(order_vehicle_bin_file(file_name, input1))
+            if(sort_vehicle_bin_file(file_name, input1))
                 binarioNaTela(input1);
             break;
 
-        case OP_ORDER_BUS_LINE_BIN_FILE:
+        case OP_SORT_BUS_LINE_BIN_FILE:
             input1 = read_word(stdin);
             // Consome 'campoOrdenacao'
             ignore_word(stdin);
-            if(order_bus_line_bin_file(file_name, input1))
+            if(sort_bus_line_bin_file(file_name, input1))
                 binarioNaTela(input1);
             break;
 

@@ -6,6 +6,7 @@
 #include <common.h>
 #include <utils.h>
 #include <bin.h>
+#include <sort.h>
 #include <btree.h>
 
 // Verifica a quantidade de itens que satisfazem uma busca. Exibe uma mensagem de erro se
@@ -323,8 +324,8 @@ bool join_vehicle_and_bus_line_merge_sorted(const char *vehicle_bin_fname, const
     char *sorted_busline_bin_fname = alloc_sprintf("%s_ordenado", busline_bin_fname);
 
     // Chama as funcionalidades que ordenam os arquivos de linha e veículo.
-    if (!order_vehicle_bin_file(vehicle_bin_fname, sorted_vehicle_bin_fname) ||
-        !order_bus_line_bin_file(busline_bin_fname, sorted_busline_bin_fname))
+    if (!sort_vehicle_bin_file(vehicle_bin_fname, sorted_vehicle_bin_fname) ||
+        !sort_bus_line_bin_file(busline_bin_fname, sorted_busline_bin_fname))
     {
         free(sorted_vehicle_bin_fname);
         free(sorted_busline_bin_fname);
